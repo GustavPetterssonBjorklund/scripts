@@ -4,7 +4,12 @@ set -euo pipefail
 # Interactive installer launcher for scripts in this repo.
 # Uses dialog (or whiptail) checkboxes so you can toggle selections with spacebar.
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -n "${BASH_SOURCE[0]:-}" && -f "${BASH_SOURCE[0]}" ]]; then
+  ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+else
+  # When sourced via curl | bash, fall back to current working directory.
+  ROOT_DIR="$(pwd)"
+fi
 
 ensure_ui_tool() {
   if command -v dialog >/dev/null 2>&1; then
