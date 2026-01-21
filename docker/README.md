@@ -1,6 +1,6 @@
 # Installing deps (tested for debian 12)
 ```bash
-apt install -y curl
+apt install -y curl sudo
 ```
 
 # To install docker / docker compose
