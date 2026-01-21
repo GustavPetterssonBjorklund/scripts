@@ -6,10 +6,19 @@ set -euo pipefail
 
 if [[ -n "${BASH_SOURCE[0]:-}" && -f "${BASH_SOURCE[0]}" ]]; then
   ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  RUN_MODE="local"
 else
-  # When sourced via curl | bash, fall back to current working directory.
-  ROOT_DIR="$(pwd)"
+  # Running via curl | bash; operate in a temp dir and pull installers from GitHub.
+  ROOT_DIR="$(mktemp -d)"
+  RUN_MODE="remote"
 fi
+
+# Remote installers to offer when not running from a checkout.
+# Format: name=url
+REMOTE_INSTALLERS=(
+  "docker=https://raw.githubusercontent.com/GustavPetterssonBjorklund/scripts/main/docker/install.sh"
+  "ovpntmp=https://raw.githubusercontent.com/GustavPetterssonBjorklund/scripts/main/ovpntmp/install.sh"
+)
 
 ensure_ui_tool() {
   if command -v dialog >/dev/null 2>&1; then
@@ -29,21 +38,31 @@ ensure_ui_tool() {
 }
 
 collect_installers() {
-  mapfile -t INSTALLERS < <(find "$ROOT_DIR" -mindepth 2 -maxdepth 2 -name install.sh | sort)
-
-  if (( ${#INSTALLERS[@]} == 0 )); then
-    echo "No install.sh scripts found."
-    exit 1
-  fi
-
   OPTIONS=()
   declare -gA INSTALLER_PATHS=()
 
-  for path in "${INSTALLERS[@]}"; do
-    name="$(basename "$(dirname "$path")")"
-    OPTIONS+=("$name" "Run ${name}/install.sh" off)
-    INSTALLER_PATHS["$name"]="$path"
-  done
+  if [[ "$RUN_MODE" == "local" ]]; then
+    mapfile -t INSTALLERS < <(find "$ROOT_DIR" -mindepth 2 -maxdepth 2 -name install.sh | sort)
+
+    if (( ${#INSTALLERS[@]} == 0 )); then
+      echo "No install.sh scripts found."
+      exit 1
+    fi
+
+    for path in "${INSTALLERS[@]}"; do
+      name="$(basename "$(dirname "$path")")"
+      OPTIONS+=("$name" "Run ${name}/install.sh" off)
+      INSTALLER_PATHS["$name"]="$path"
+    done
+  else
+    for entry in "${REMOTE_INSTALLERS[@]}"; do
+      name="${entry%%=*}"
+      url="${entry#*=}"
+      local_path="$ROOT_DIR/${name}-install.sh"
+      OPTIONS+=("$name" "Run ${name}/install.sh" off)
+      INSTALLER_PATHS["$name"]="$local_path|$url"
+    done
+  fi
 }
 
 prompt_selection() {
@@ -74,9 +93,23 @@ prompt_selection() {
 
 run_installers() {
   for name in "${SELECTED[@]}"; do
-    script_path="${INSTALLER_PATHS[$name]}"
-    echo "[*] Running ${name}/install.sh ..."
-    (cd "$(dirname "$script_path")" && bash "$(basename "$script_path")")
+    entry="${INSTALLER_PATHS[$name]}"
+
+    if [[ "$RUN_MODE" == "remote" ]]; then
+      # entry format: local_path|url
+      script_path="${entry%%|*}"
+      url="${entry#*|}"
+      echo "[*] Downloading ${name}/install.sh ..."
+      curl -fsSL "$url" -o "$script_path"
+      chmod +x "$script_path"
+      echo "[*] Running ${name}/install.sh ..."
+      bash "$script_path"
+    else
+      script_path="$entry"
+      echo "[*] Running ${name}/install.sh ..."
+      (cd "$(dirname "$script_path")" && bash "$(basename "$script_path")")
+    fi
+
     echo "[+] Completed ${name}/install.sh"
     echo
   done
