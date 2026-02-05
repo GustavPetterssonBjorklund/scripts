@@ -24,6 +24,9 @@ def print_usage():
   {GREEN}c{RESET} [message]    {YELLOW}Commit with message{RESET} (default: opens editor)
   {GREEN}p{RESET} [remote]     {YELLOW}Push to remote{RESET} (default: origin)
   {GREEN}l{RESET}              {YELLOW}Show git log in one line format{RESET}
+  {GREEN}pl{RESET}             {YELLOW}Pull from remote{RESET}
+  {GREEN}cl{RESET} <repo-url>   {YELLOW}Clone a repository{RESET}
+  {GREEN}cb{RESET} <branch-name> {YELLOW}Create and checkout a new branch{RESET}
 """
     print(usage.strip())
 
@@ -41,6 +44,9 @@ def main():
         "c": lambda: run(["git", "commit", "-m", " ".join(git_args)] if git_args else ["git", "commit"]),
         "p": lambda: run(["git", "push", *git_args] if git_args else ["git", "push"]),
         "l": lambda: run(["git", "log", "--oneline"]),
+        "pl": lambda: run(["git", "pull"]),
+        "cl": lambda: run(["git", "clone", *git_args]) if git_args else print("Please provide a repository URL to clone."),
+        "cb": lambda: run(["git", "checkout", "-b", *git_args]) if git_args else print("Please provide a branch name.")
     }
     
     # See if help flag or no flags
