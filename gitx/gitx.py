@@ -3,7 +3,7 @@ import sys
 import subprocess
 
 def run(cmd):
-    return subprocess.call(cmd, shell=True)
+    return subprocess.call(cmd)
 
 
 def print_usage():
