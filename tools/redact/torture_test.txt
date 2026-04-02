@@ -424,4 +424,128 @@ Error: login failed for user alice_admin with password UltraSecret!987 at auth.g
 
 ================================================================================
 
+================================================================================
+SECTION 22: SOPS / ENCRYPTED CONFIG FILES
+================================================================================
+
+# Standard SOPS YAML structure
+apiVersion: v1
+kind: Secret
+metadata:
+  name: example-secret
+data:
+  username: alice_admin
+  password: ENC[AES256_GCM,data:ZHVtbXlwYXNzd29yZA==,iv:abcd1234,tag:efgh5678,type:str]
+  api_key: ENC[AES256_GCM,data:c2tfbGl2ZV9hYmNkZWYxMjM0NTY=,iv:ijkl9012,tag:mnop3456,type:str]
+
+sops:
+  kms: []
+  gcp_kms: []
+  azure_kv: []
+  age:
+    - recipient: age1examplekey1234567890
+      enc: |
+        -----BEGIN AGE ENCRYPTED FILE-----
+        YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBleGFtcGxlIGtleQp...
+        -----END AGE ENCRYPTED FILE-----
+  lastmodified: "2026-03-14T10:22:31Z"
+  mac: ENC[AES256_GCM,data:YWJjZGVmZ2hpamtsbW5vcA==,iv:qrst7890,tag:uvwx1234,type:str]
+  version: 3.7.1
+
+--------------------------------------------------------------------------------
+
+# SOPS JSON format
+{
+  "db": {
+    "user": "alice_admin",
+    "password": "ENC[AES256_GCM,data:cGFzc3dvcmQxMjM=,iv:abcd,tag:efgh,type:str]"
+  },
+  "service": {
+    "token": "ENC[AES256_GCM,data:c2Vzc190b2tlbl8xMjM0NTY=,iv:ijkl,tag:mnop,type:str]"
+  },
+  "sops": {
+    "age": [
+      {
+        "recipient": "age1examplekey1234567890",
+        "enc": "-----BEGIN AGE ENCRYPTED FILE-----\\nYWdl...\\n-----END AGE ENCRYPTED FILE-----"
+      }
+    ],
+    "mac": "ENC[AES256_GCM,data:YWJjZGVm,iv:qrst,tag:uvwx,type:str]"
+  }
+}
+
+--------------------------------------------------------------------------------
+
+# Partially decrypted (mixed state)
+data:
+  username: alice_admin
+  password: SuperSecret!123
+  api_key: ENC[AES256_GCM,data:c2tfbGl2ZV9hYmNkZWY=,iv:abcd,tag:efgh,type:str]
+
+--------------------------------------------------------------------------------
+
+# SOPS with environment-style secrets
+stringData:
+  DATABASE_URL: postgres://alice_admin:SuperSecret!123@db.internal.local:5432/app
+  STRIPE_SECRET_KEY: sk_live_abcdef1234567890
+  SESSION_SECRET: sess_ab12cd34ef56gh78
+
+--------------------------------------------------------------------------------
+
+# Nested secrets inside arrays
+configs:
+  - name: service-a
+    credentials:
+      username: alice_admin
+      password: ENC[AES256_GCM,data:cGFzcw==,iv:aa,tag:bb,type:str]
+  - name: service-b
+    credentials:
+      token: SuperSecretToken123
+
+--------------------------------------------------------------------------------
+
+# Inline encrypted values in strings
+connection: "postgres://alice_admin:ENC[AES256_GCM,data:cGFzcw==,iv:aa,tag:bb,type:str]@db.internal.local:5432/app"
+
+--------------------------------------------------------------------------------
+
+# Broken / malformed SOPS (should still be handled)
+password: ENC[AES256_GCM,data:invalid_base64,iv:xx,tag:yy,type:str]
+
+--------------------------------------------------------------------------------
+
+# SOPS with comments (common in repos)
+# password for production DB
+password: ENC[AES256_GCM,data:cHJvZHBhc3M=,iv:1234,tag:5678,type:str]
+
+# NOTE: do not commit plaintext secrets!
+api_key: sk_live_abcdef1234567890
+
+--------------------------------------------------------------------------------
+
+# Multi-line encrypted value
+tls_key: ENC[AES256_GCM,data:LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCgphYmNkZWY=,iv:zz,tag:yy,type:str]
+
+--------------------------------------------------------------------------------
+
+# Age key accidentally exposed (very bad)
+age_private_key: AGE-SECRET-KEY-1QWERTYUIOPASDFGHJKLZXCVBNM1234567890
+
+--------------------------------------------------------------------------------
+
+# SOPS metadata leakage
+sops:
+  lastmodified: "2026-03-14T10:22:31Z"
+  mac: ENC[AES256_GCM,data:YWJjZGVm,iv:abcd,tag:efgh,type:str]
+  pgp:
+    - fp: "ABCD1234EF567890"
+      enc: |
+        -----BEGIN PGP MESSAGE-----
+        Version: GnuPG v1
+
+        hQIMA5examplefakeblock
+        -----END PGP MESSAGE-----
+
+================================================================================
+
 END OF FILE

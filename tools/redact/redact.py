@@ -239,6 +239,20 @@ RULES = [
         description="Credentials embedded in URLs are high risk.",
     ),
     Rule(
+        name="sops_encrypted_value",
+        label="SOPS encrypted value",
+        base_score=98,
+        pattern=re.compile(r"ENC\[[^\]\n]+]"),
+        description="SOPS encrypted values should be redacted as a whole to avoid metadata leakage.",
+    ),
+    Rule(
+        name="age_secret_key",
+        label="Age private key",
+        base_score=99,
+        pattern=re.compile(r"\bAGE-SECRET-KEY-1[A-Z0-9]{20,}\b"),
+        description="Age secret keys are high-risk long-lived credentials.",
+    ),
+    Rule(
         name="aws_access_key",
         label="AWS access key",
         base_score=94,

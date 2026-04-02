@@ -1,0 +1,460 @@
+{
+  "must_redact": [
+    {
+      "section": "1",
+      "description": "section 1 primary email line",
+      "literal": "Email: alice.example@samplemail.test"
+    },
+    {
+      "section": "1",
+      "description": "section 1 compact phone line",
+      "literal": "Compact Phone: +14155550137"
+    },
+    {
+      "section": "1",
+      "description": "section 1 ssn line",
+      "literal": "SSN: 123-45-6789"
+    },
+    {
+      "section": "1",
+      "description": "section 1 driver license line",
+      "literal": "Driver License: D1234567"
+    },
+    {
+      "section": "1",
+      "description": "section 1 passport line",
+      "literal": "Passport: X12345678"
+    },
+    {
+      "section": "3",
+      "description": "section 3 visa card line",
+      "literal": "Credit Card Visa: 4111 1111 1111 1111"
+    },
+    {
+      "section": "3",
+      "description": "section 3 compact card line",
+      "literal": "Credit Card Compact: 4111111111111111"
+    },
+    {
+      "section": "3",
+      "description": "section 3 amex line",
+      "literal": "Amex: 378282246310005"
+    },
+    {
+      "section": "3",
+      "description": "section 3 iban line",
+      "literal": "IBAN: DE89 3704 0044 0532 0130 00"
+    },
+    {
+      "section": "3",
+      "description": "section 3 bank account line",
+      "literal": "Bank Account: 1234567890"
+    },
+    {
+      "section": "4",
+      "description": "section 4 password line",
+      "literal": "Password: SuperSecret!234"
+    },
+    {
+      "section": "4",
+      "description": "section 4 session token line",
+      "literal": "Session Token: sess_7f4d2b0c1a9e83f5"
+    },
+    {
+      "section": "4",
+      "description": "section 4 refresh token line",
+      "literal": "Refresh Token: refresh_5d9a1c2ef088baf1"
+    },
+    {
+      "section": "4",
+      "description": "section 4 jwt line",
+      "literal": "JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.fakepayload.fakesignature"
+    },
+    {
+      "section": "4",
+      "description": "section 4 api key line",
+      "literal": "API Key: sk_test_51Qexample9JfK2ZfakeKEY123456789"
+    },
+    {
+      "section": "4",
+      "description": "section 4 stripe secret line",
+      "literal": "Stripe Secret: sk_live_fake_redaction_target_0001"
+    },
+    {
+      "section": "4",
+      "description": "section 4 github token line",
+      "literal": "GitHub Token: ghp_1234567890abcdefghijklmnopqrstuvwxyz"
+    },
+    {
+      "section": "4",
+      "description": "section 4 slack token line",
+      "literal": "Slack Token: xoxb-123456789012-123456789012-abcdefghijklmnopqrstuvwx"
+    },
+    {
+      "section": "4",
+      "description": "section 4 discord token line",
+      "literal": "Discord Token: mfa.fake.discord.token.value"
+    },
+    {
+      "section": "4",
+      "description": "section 4 aws access key line",
+      "literal": "AWS Access Key ID: AKIAIOSFODNN7EXAMPLE"
+    },
+    {
+      "section": "4",
+      "description": "section 4 aws secret key line",
+      "literal": "AWS Secret Access Key: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+    },
+    {
+      "section": "4",
+      "description": "section 4 authorization basic line",
+      "literal": "Authorization: Basic YWxpY2U6U3VwZXJTZWNyZXQhMjM0"
+    },
+    {
+      "section": "4",
+      "description": "section 4 set-cookie line",
+      "literal": "Set-Cookie: sessionid=abc123xyz789secret; HttpOnly; Secure"
+    },
+    {
+      "section": "5",
+      "description": "section 5 public ipv4 line",
+      "literal": "IPv4 Public: 203.0.113.42"
+    },
+    {
+      "section": "5",
+      "description": "section 5 mac address line",
+      "literal": "MAC Address: 00:1A:2B:3C:4D:5E"
+    },
+    {
+      "section": "5",
+      "description": "section 5 database dsn line",
+      "literal": "Database DSN: postgres://alice_admin:SuperSecret!234@db.internal.local:5432/payroll"
+    },
+    {
+      "section": "5",
+      "description": "section 5 mongo uri line",
+      "literal": "Mongo URI: mongodb://bob.root:AnotherSecret!99@mongo.internal.local:27017/admin"
+    },
+    {
+      "section": "5",
+      "description": "section 5 redis uri line",
+      "literal": "Redis URI: redis://:redisPass123@redis.internal.local:6379/0"
+    },
+    {
+      "section": "7",
+      "description": "section 7 backup email literal",
+      "literal": "a.example+backup@demo.invalid"
+    },
+    {
+      "section": "7",
+      "description": "section 7 freeform public ip literal",
+      "literal": "203.0.113.42"
+    },
+    {
+      "section": "7",
+      "description": "section 7 freeform full card line",
+      "literal": "Then provided full card 4111 1111 1111 1111 because the payment form failed."
+    },
+    {
+      "section": "8",
+      "description": "section 8 first json line",
+      "literal": "{\"timestamp\":\"2026-03-14T10:22:31Z\",\"user\":\"alice_admin\",\"email\":\"alice.example@samplemail.test\",\"phone\":\"+1 (415) 555-0137\",\"ip\":\"203.0.113.42\",\"token\":\"sess_7f4d2b0c1a9e83f5\",\"card\":\"4111111111111111\"}"
+    },
+    {
+      "section": "8",
+      "description": "section 8 auth json line",
+      "literal": "{\"auth\":{\"username\":\"alice_admin\",\"password\":\"SuperSecret!234\",\"mfa\":\"ZXCV-BNMM-QWER-TYUI\"},\"network\":{\"ipv4\":\"203.0.113.42\",\"ipv6\":\"2001:db8::8a2e:370:7334\"}}"
+    },
+    {
+      "section": "8",
+      "description": "section 8 header cookie line",
+      "literal": "  \"cookie\":\"sessionid=abc123xyz789secret; csrftoken=qwerty0987654321\""
+    },
+    {
+      "section": "9",
+      "description": "section 9 csv alice row",
+      "literal": "Alice Example,alice.example@samplemail.test,+1-415-555-0137,123-45-6789,203.0.113.42"
+    },
+    {
+      "section": "9",
+      "description": "section 9 csv bob row",
+      "literal": "Bob Example,bob.example@samplemail.test,+46-70-555-0101,987-65-4321,198.51.100.24"
+    },
+    {
+      "section": "9",
+      "description": "section 9 debug log line",
+      "literal": "2026-03-14T10:22:35Z level=DEBUG password=SuperSecret!234 token=sess_7f4d2b0c1a9e83f5"
+    },
+    {
+      "section": "9",
+      "description": "section 9 warn line",
+      "literal": "2026-03-14T10:22:40Z level=WARN card=4111111111111111 iban=\"DE89 3704 0044 0532 0130 00\""
+    },
+    {
+      "section": "10",
+      "description": "section 10 bare password line",
+      "literal": "password:SuperSecret!234"
+    },
+    {
+      "section": "10",
+      "description": "section 10 session token line",
+      "literal": "session_token :sess_7f4d2b0c1a9e83f5"
+    },
+    {
+      "section": "10",
+      "description": "section 10 iban line",
+      "literal": "iban=DE89370400440532013000"
+    },
+    {
+      "section": "10",
+      "description": "section 10 aws secret line",
+      "literal": "aws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+    },
+    {
+      "section": "11",
+      "description": "section 11 reset url line",
+      "literal": "https://example.test/reset?email=alice.example@samplemail.test&token=sess_7f4d2b0c1a9e83f5"
+    },
+    {
+      "section": "11",
+      "description": "section 11 corp login url line",
+      "literal": "https://corp.example.test/login?username=alice_admin&password=SuperSecret!234"
+    },
+    {
+      "section": "11",
+      "description": "section 11 form body line",
+      "literal": "username=alice_admin&password=SuperSecret!234&mfa=ZXCV-BNMM-QWER-TYUI"
+    },
+    {
+      "section": "12",
+      "description": "section 12 encoded password line",
+      "literal": "URL Encoded Password: password=SuperSecret%21234"
+    },
+    {
+      "section": "12",
+      "description": "section 12 base64 basic auth line",
+      "literal": "Base64 Basic Auth: YWxpY2VfYWRtaW46U3VwZXJTZWNyZXQhMjM0"
+    },
+    {
+      "section": "12",
+      "description": "section 12 escaped json line",
+      "literal": "Escaped JSON: \"{\\\"password\\\":\\\"SuperSecret!234\\\",\\\"token\\\":\\\"sess_7f4d2b0c1a9e83f5\\\"}\""
+    },
+    {
+      "section": "13",
+      "description": "section 13 wrapped private key start",
+      "literal": "Private-Key-One-Line-Wrapped:\n-----BEGIN PRIVATE KEY-----"
+    },
+    {
+      "section": "16",
+      "description": "section 16 order number should stay",
+      "literal": "Order Number: 123-45-678",
+      "expect": "keep"
+    },
+    {
+      "section": "16",
+      "description": "section 16 build id should stay",
+      "literal": "Build ID: 4111-1111-1111",
+      "expect": "keep"
+    },
+    {
+      "section": "16",
+      "description": "section 16 placeholder email should stay",
+      "literal": "Fake Placeholder Email: user@example.com",
+      "expect": "keep"
+    },
+    {
+      "section": "16",
+      "description": "section 16 uuid should stay",
+      "literal": "UUID Only: 550e8400-e29b-41d4-a716-446655440000",
+      "expect": "keep"
+    },
+    {
+      "section": "16",
+      "description": "section 16 reference should stay",
+      "literal": "Reference: ABCD-1234-EFGH-5678",
+      "expect": "keep"
+    },
+    {
+      "section": "17",
+      "description": "section 17 lowercase authorization line",
+      "literal": "authorization: bearer eyJhbGciOiJIUzI1NiJ9.example.payload"
+    },
+    {
+      "section": "17",
+      "description": "section 17 cookie prose line",
+      "literal": "The browser sent sessionid=abc123xyz789secret and csrftoken=qwerty0987654321 before redirect."
+    },
+    {
+      "section": "17",
+      "description": "section 17 curl credential line",
+      "literal": "curl -u alice_admin:SuperSecret!234 https://api.example.test/private"
+    },
+    {
+      "section": "17",
+      "description": "section 17 docker login line",
+      "literal": "docker login -u alice_admin -p SuperSecret!234 registry.example.test"
+    },
+    {
+      "section": "17",
+      "description": "section 17 aws config secret line",
+      "literal": "aws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+    },
+    {
+      "section": "17",
+      "description": "section 17 env database url line",
+      "literal": "DATABASE_URL=postgres://alice_admin:SuperSecret!234@db.internal.local:5432/payroll"
+    },
+    {
+      "section": "17",
+      "description": "section 17 xml password element line",
+      "literal": "  <password>SuperSecret!234</password>"
+    },
+    {
+      "section": "18",
+      "description": "section 18 personnummer line",
+      "literal": "Personnummer: 850709-1234"
+    },
+    {
+      "section": "18",
+      "description": "section 18 phone line",
+      "literal": "Telefonnummer: +46 70 123 45 67"
+    },
+    {
+      "section": "18",
+      "description": "section 18 email line",
+      "literal": "E-post: alice@example.se"
+    },
+    {
+      "section": "18",
+      "description": "section 18 bank account line",
+      "literal": "Kontonummer: 1234567890"
+    },
+    {
+      "section": "18",
+      "description": "section 18 card line",
+      "literal": "Kortnummer: 4111111111111111"
+    },
+    {
+      "section": "19",
+      "description": "section 19 meeting room should stay",
+      "literal": "Meeting room code: BLUE-ROOM-4",
+      "expect": "keep"
+    },
+    {
+      "section": "19",
+      "description": "section 19 reference text should stay",
+      "literal": "Reference text: tokenization, passwordless, cardholder, sessional",
+      "expect": "keep"
+    },
+    {
+      "section": "19",
+      "description": "section 19 host example should stay",
+      "literal": "Host example only: server.example.test",
+      "expect": "keep"
+    },
+    {
+      "section": "19",
+      "description": "section 19 masked card should stay",
+      "literal": "Sample masked card: **** **** **** 4242",
+      "expect": "keep"
+    },
+    {
+      "section": "19",
+      "description": "section 19 token docs sentence should stay",
+      "literal": "Another doc sentence: The field is called token but contains no real value here.",
+      "expect": "keep"
+    },
+    {
+      "section": "21",
+      "description": "section 21 homoglyph email line",
+      "literal": "Email: аlice@example.com  # first \"a\" is Cyrillic"
+    },
+    {
+      "section": "21",
+      "description": "section 21 split api key part 1",
+      "literal": "API Key Part 1: sk_live_"
+    },
+    {
+      "section": "21",
+      "description": "section 21 split api key part 2",
+      "literal": "API Key Part 2: abcdef1234567890"
+    },
+    {
+      "section": "21",
+      "description": "section 21 concatenated secret line",
+      "literal": "const password = \"Super\" + \"Secret\" + \"123\";"
+    },
+    {
+      "section": "21",
+      "description": "section 21 encoded password blob",
+      "literal": "Base64(URL(password)): U3VwZXJTZWNyZXQlMjEyMw=="
+    },
+    {
+      "section": "21",
+      "description": "section 21 quoted email line",
+      "literal": "Email: \"alice..test\"@example.com"
+    },
+    {
+      "section": "21",
+      "description": "section 21 mac without separators line",
+      "literal": "MAC: 001A2B3C4D5E"
+    },
+    {
+      "section": "22",
+      "description": "section 22 yaml encrypted password line",
+      "literal": "  password: ENC[AES256_GCM,data:ZHVtbXlwYXNzd29yZA==,iv:abcd1234,tag:efgh5678,type:str]"
+    },
+    {
+      "section": "22",
+      "description": "section 22 yaml encrypted api key line",
+      "literal": "  api_key: ENC[AES256_GCM,data:c2tfbGl2ZV9hYmNkZWYxMjM0NTY=,iv:ijkl9012,tag:mnop3456,type:str]"
+    },
+    {
+      "section": "22",
+      "description": "section 22 json encrypted password line",
+      "literal": "    \"password\": \"ENC[AES256_GCM,data:cGFzc3dvcmQxMjM=,iv:abcd,tag:efgh,type:str]\""
+    },
+    {
+      "section": "22",
+      "description": "section 22 mixed plaintext password line",
+      "literal": "  password: SuperSecret!123"
+    },
+    {
+      "section": "22",
+      "description": "section 22 stripe secret line",
+      "literal": "  STRIPE_SECRET_KEY: sk_live_abcdef1234567890"
+    },
+    {
+      "section": "22",
+      "description": "section 22 nested array token line",
+      "literal": "      token: SuperSecretToken123"
+    },
+    {
+      "section": "22",
+      "description": "section 22 malformed encrypted line",
+      "literal": "password: ENC[AES256_GCM,data:invalid_base64,iv:xx,tag:yy,type:str]"
+    },
+    {
+      "section": "22",
+      "description": "section 22 comment block api key line",
+      "literal": "api_key: sk_live_abcdef1234567890"
+    },
+    {
+      "section": "22",
+      "description": "section 22 age private key line",
+      "literal": "age_private_key: AGE-SECRET-KEY-1QWERTYUIOPASDFGHJKLZXCVBNM1234567890"
+    },
+    {
+      "section": "22",
+      "description": "section 22 sops encrypted payload metadata",
+      "regex": "data:[A-Za-z0-9+/=]+,iv:[^,\\s]+,tag:[^,\\s]+,type:str\\]"
+    },
+    {
+      "section": "22",
+      "description": "section 22 sops version should stay",
+      "literal": "  version: 3.7.1",
+      "expect": "keep"
+    }
+  ]
+}
