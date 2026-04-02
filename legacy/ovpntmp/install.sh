@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-RAW_URL="https://raw.githubusercontent.com/GustavPetterssonBjorklund/scripts/main/ovpntmp/ovpntmp.sh"
+RAW_URL="https://raw.githubusercontent.com/GustavPetterssonBjorklund/scripts/main/tools/ovpntmp/ovpntmp.sh"
 TARGET="/usr/local/bin/ovpntmp"
 
 echo "[*] Installing prerequisites..."

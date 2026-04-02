@@ -16,8 +16,8 @@ fi
 # Remote installers to offer when not running from a checkout.
 # Format: name=url
 REMOTE_INSTALLERS=(
-  "docker=https://raw.githubusercontent.com/GustavPetterssonBjorklund/scripts/main/docker/install.sh"
-  "ovpntmp=https://raw.githubusercontent.com/GustavPetterssonBjorklund/scripts/main/ovpntmp/install.sh"
+  "docker=https://raw.githubusercontent.com/GustavPetterssonBjorklund/scripts/main/legacy/docker/install.sh"
+  "ovpntmp=https://raw.githubusercontent.com/GustavPetterssonBjorklund/scripts/main/legacy/ovpntmp/install.sh"
 )
 
 ensure_ui_tool() {
