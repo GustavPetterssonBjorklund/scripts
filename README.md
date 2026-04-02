@@ -9,6 +9,7 @@ Run a tool directly:
 ```bash
 nix run .#gitx -- -h
 nix run .#ovpntmp
+nix run .#redact -- --help
 ```
 
 Build or install a package:
@@ -35,3 +36,16 @@ nix develop
 1. Add the source under `tools/<name>/`.
 2. Add a package definition under `pkgs/<name>.nix`.
 3. Export it from `flake.nix` under `packages` and `apps`.
+
+## Included Utilities
+
+- `gitx`: short aliases for common git commands
+- `ovpntmp`: choose and run a temporary OpenVPN config from Downloads
+- `redact`: inspect piped stdin, score likely sensitive values, and interactively replace them with `<redacted>`
+
+Example:
+
+```bash
+cat .env | nix run .#redact
+cat incident.log | nix run .#redact -- --yes
+```

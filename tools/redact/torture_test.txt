@@ -1,0 +1,427 @@
+REDACTION TORTURE TEST FILE
+All data in this file is fictitious and intended only for testing redaction utilities.
+Goal: stress-test redactors against labeled fields, unlabeled secrets, mixed formatting,
+nested structures, encoded content, repeated leaks, partial masking, and false positives.
+
+================================================================================
+SECTION 1: BASIC PII / DIRECT LABELS
+================================================================================
+Full Name: Alice Marianne Example
+Legal Name: Bob Jonathan Example
+Preferred Name: Alice
+Date of Birth: 1994-07-18
+DOB: 1988/11/02
+Email: alice.example@samplemail.test
+Backup Email: a.example+backup@demo.invalid
+Work Email: bob_j_example@corp.example
+Phone: +1 (415) 555-0137
+Alt Phone: 070-123 45 67
+Compact Phone: +14155550137
+SSN: 123-45-6789
+National ID: 850709-1234
+Driver License: D1234567
+Passport: X12345678
+Employee ID: EMP-443829
+Customer ID: CUST-00019928
+
+================================================================================
+SECTION 2: ADDRESSES / LOCATION
+================================================================================
+Home Address: 742 Evergreen Terrace, Springfield, IL 62704, USA
+Billing Address: 12 Testvägen, 722 13 Västerås, Sweden
+Shipping Address: Apartment 5B, 221B Baker Street, London NW1 6XE, UK
+GPS Coordinates: 59.6099, 16.5448
+What3Words: table.chair.lamp
+Office: Floor 4, Room 411, 100 Example Campus Drive, Austin, TX 73301
+
+================================================================================
+SECTION 3: FINANCIAL DATA
+================================================================================
+Credit Card Visa: 4111 1111 1111 1111
+Credit Card Mastercard: 5555 5555 5555 4444
+Credit Card Compact: 4111111111111111
+Amex: 378282246310005
+IBAN: DE89 3704 0044 0532 0130 00
+SWIFT/BIC: COBADEFFXXX
+Bank Account: 1234567890
+Routing Number: 021000021
+Sort Code: 20-00-00
+Masked Card: **** **** **** 1111
+Partially Masked IBAN: DE89 **** **** **** 0130 00
+Invoice Total: 199.99
+Tax ID: TAX-556677
+
+================================================================================
+SECTION 4: AUTH / LOGIN / SECRET MATERIAL
+================================================================================
+Username: alice_admin
+User: bob.root
+Password: SuperSecret!234
+PIN: 4821
+Passcode: 924771
+MFA Recovery Code: ZXCV-BNMM-QWER-TYUI
+Session Token: sess_7f4d2b0c1a9e83f5
+Refresh Token: refresh_5d9a1c2ef088baf1
+JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.fakepayload.fakesignature
+API Key: sk_test_51Qexample9JfK2ZfakeKEY123456789
+Stripe Secret: sk_live_fake_redaction_target_0001
+GitHub Token: ghp_1234567890abcdefghijklmnopqrstuvwxyz
+Slack Token: xoxb-123456789012-123456789012-abcdefghijklmnopqrstuvwx
+Discord Token: mfa.fake.discord.token.value
+AWS Access Key ID: AKIAIOSFODNN7EXAMPLE
+AWS Secret Access Key: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+Bearer Token: Bearer eyJhbGciOiJIUzI1NiJ9.example.payload
+Authorization: Basic YWxpY2U6U3VwZXJTZWNyZXQhMjM0
+Set-Cookie: sessionid=abc123xyz789secret; HttpOnly; Secure
+Cookie: csrftoken=qwerty0987654321; session=abcdef123456
+Private Key Snippet:
+-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASC...
+-----END PRIVATE KEY-----
+SSH Public Key:
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOexamplefakekeymaterial alice@example-host
+
+================================================================================
+SECTION 5: NETWORK / DEVICE / SYSTEM
+================================================================================
+IPv4 Public: 203.0.113.42
+IPv4 Private: 192.168.1.55
+IPv6: 2001:db8::8a2e:370:7334
+MAC Address: 00:1A:2B:3C:4D:5E
+Hostname: finance-laptop-07
+Machine ID: 9f1c2eaa-4d88-4fb6-bb31-0ea22c5c93f2
+Serial Number: SN-4438-ABCD-9921
+Internal URL: https://intranet.example.local/hr/payroll
+Server URL: https://api.example.test/v1/customers/12345
+Database DSN: postgres://alice_admin:SuperSecret!234@db.internal.local:5432/payroll
+Mongo URI: mongodb://bob.root:AnotherSecret!99@mongo.internal.local:27017/admin
+Redis URI: redis://:redisPass123@redis.internal.local:6379/0
+
+================================================================================
+SECTION 6: HEALTH / HIGHLY SENSITIVE CONTENT
+================================================================================
+Patient Name: Bob Example
+Medical Record Number: MRN-00044321
+Insurance ID: INS-99887766
+Diagnosis: Example diagnosis for redaction testing only
+Prescription ID: RX-2026-00044
+Therapist Notes: Patient discussed stress related to payroll access and workplace conflict.
+
+================================================================================
+SECTION 7: FREEFORM TEXT LEAKS
+================================================================================
+On 2026-03-14, Alice Marianne Example emailed alice.example@samplemail.test from IP
+203.0.113.42 and called +1 (415) 555-0137 to reset the account alice_admin. During
+the call, she confirmed SSN 123-45-6789 and billing address 12 Testvägen, 722 13
+Västerås, Sweden. A temporary password of SuperSecret!234 was issued, and a session
+token sess_7f4d2b0c1a9e83f5 was logged by server finance-laptop-07.
+
+Bob then replied, “use my backup email a.example+backup@demo.invalid if the corp
+account fails again,” and pasted this DSN:
+postgres://alice_admin:SuperSecret!234@db.internal.local:5432/payroll
+
+Support agent note:
+caller verified passport X12345678, driver license D1234567, and card ending in 1111.
+Then provided full card 4111 1111 1111 1111 because the payment form failed.
+
+================================================================================
+SECTION 8: JSON / NESTED JSON / ARRAYS
+================================================================================
+{"timestamp":"2026-03-14T10:22:31Z","user":"alice_admin","email":"alice.example@samplemail.test","phone":"+1 (415) 555-0137","ip":"203.0.113.42","token":"sess_7f4d2b0c1a9e83f5","card":"4111111111111111"}
+
+{"auth":{"username":"alice_admin","password":"SuperSecret!234","mfa":"ZXCV-BNMM-QWER-TYUI"},"network":{"ipv4":"203.0.113.42","ipv6":"2001:db8::8a2e:370:7334"}}
+
+{"users":[
+  {"name":"Alice Example","email":"alice.example@samplemail.test","ssn":"123-45-6789"},
+  {"name":"Bob Example","email":"bob.example@samplemail.test","ssn":"987-65-4321"}
+]}
+
+{"headers":{
+  "authorization":"Bearer eyJhbGciOiJIUzI1NiJ9.example.payload",
+  "cookie":"sessionid=abc123xyz789secret; csrftoken=qwerty0987654321"
+}}
+
+================================================================================
+SECTION 9: CSV / TSV / LOG-LIKE FORMATS
+================================================================================
+name,email,phone,ssn,ip
+Alice Example,alice.example@samplemail.test,+1-415-555-0137,123-45-6789,203.0.113.42
+Bob Example,bob.example@samplemail.test,+46-70-555-0101,987-65-4321,198.51.100.24
+
+username	password	token
+alice_admin	SuperSecret!234	sess_7f4d2b0c1a9e83f5
+bob.root	AnotherSecret!99	refresh_5d9a1c2ef088baf1
+
+2026-03-14T10:22:31Z level=INFO user=alice_admin ip=203.0.113.42 action=login
+2026-03-14T10:22:35Z level=DEBUG password=SuperSecret!234 token=sess_7f4d2b0c1a9e83f5
+2026-03-14T10:22:40Z level=WARN card=4111111111111111 iban="DE89 3704 0044 0532 0130 00"
+
+================================================================================
+SECTION 10: NOISY / MESSY / INCONSISTENT FORMATTING
+================================================================================
+password:SuperSecret!234
+Password = SuperSecret!234
+pAsSwOrD :   SuperSecret!234
+passwd=>SuperSecret!234
+token=sess_7f4d2b0c1a9e83f5
+session_token :sess_7f4d2b0c1a9e83f5
+SSN:123-45-6789
+ssn = 123-45-6789
+social security number -> 123-45-6789
+email=alice.example@samplemail.test
+e-mail : alice.example@samplemail.test
+PHONE:+14155550137
+phone number -> +1 (415) 555-0137
+card=4111111111111111
+card : 4111-1111-1111-1111
+iban=DE89370400440532013000
+aws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+
+================================================================================
+SECTION 11: URLS / QUERY PARAMS / FORM DATA
+================================================================================
+https://example.test/reset?email=alice.example@samplemail.test&token=sess_7f4d2b0c1a9e83f5
+https://pay.example.test/checkout?card=4111111111111111&cvv=123
+https://corp.example.test/login?username=alice_admin&password=SuperSecret!234
+POST /login HTTP/1.1
+Host: corp.example.test
+Content-Type: application/x-www-form-urlencoded
+
+username=alice_admin&password=SuperSecret!234&mfa=ZXCV-BNMM-QWER-TYUI
+
+================================================================================
+SECTION 12: ENCODED / ESCAPED / OBFUSCATED
+================================================================================
+URL Encoded Password: password=SuperSecret%21234
+URL Encoded Email: email=alice.example%40samplemail.test
+Base64 Basic Auth: YWxpY2VfYWRtaW46U3VwZXJTZWNyZXQhMjM0
+Escaped JSON: "{\"password\":\"SuperSecret!234\",\"token\":\"sess_7f4d2b0c1a9e83f5\"}"
+Hex-like Secret Blob: 4a6f686e446f65536563726574546f6b656e313233
+Looks Random: a8f4c91e0b1d7f2a9cc443af8812de11
+
+================================================================================
+SECTION 13: MULTILINE LEAKS
+================================================================================
+Password:
+SuperSecret!234
+
+JWT Part 1:
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.
+JWT Part 2:
+fakepayload.
+JWT Part 3:
+fakesignature
+
+Private-Key-One-Line-Wrapped:
+-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASC
+exampleline2
+exampleline3
+-----END PRIVATE KEY-----
+
+================================================================================
+SECTION 14: PARTIAL MASKING / HYBRID VALUES
+================================================================================
+Email Masked: a***e.example@samplemail.test
+Card Masked: 4111********1111
+Card Last4: 1111
+Phone Masked: +1 (***) ***-0137
+SSN Last4: 6789
+Passport Partial: X12*****
+Token Prefix Only: sess_7f4d...
+DB URI Partial: postgres://alice_admin:***@db.internal.local:5432/payroll
+
+================================================================================
+SECTION 15: DUPLICATES / REPETITIONS
+================================================================================
+alice.example@samplemail.test
+alice.example@samplemail.test
+alice.example@samplemail.test
+203.0.113.42
+203.0.113.42
+203.0.113.42
+SuperSecret!234
+SuperSecret!234
+sess_7f4d2b0c1a9e83f5
+sess_7f4d2b0c1a9e83f5
+
+================================================================================
+SECTION 16: EDGE CASES THAT LOOK SENSITIVE BUT MAY NOT BE
+================================================================================
+Order Number: 123-45-678
+Tracking Code: X1234567
+Build ID: 4111-1111-1111
+Example IPv4 From Docs: 198.51.100.24
+Example IPv6 From Docs: 2001:db8::1
+Fake Placeholder Email: user@example.com
+UUID Only: 550e8400-e29b-41d4-a716-446655440000
+Version: 1.2.3-4567
+Status Code: 401
+Reference: ABCD-1234-EFGH-5678
+
+================================================================================
+SECTION 17: THINGS MANY REDACTORS MISS
+================================================================================
+Authorization header lowercase:
+authorization: bearer eyJhbGciOiJIUzI1NiJ9.example.payload
+
+Cookie inside prose:
+The browser sent sessionid=abc123xyz789secret and csrftoken=qwerty0987654321 before redirect.
+
+Credential in shell history:
+curl -u alice_admin:SuperSecret!234 https://api.example.test/private
+docker login -u alice_admin -p SuperSecret!234 registry.example.test
+psql "postgres://alice_admin:SuperSecret!234@db.internal.local:5432/payroll"
+
+Credential in config snippet:
+[default]
+aws_access_key_id = AKIAIOSFODNN7EXAMPLE
+aws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+
+.env snippet:
+DATABASE_URL=postgres://alice_admin:SuperSecret!234@db.internal.local:5432/payroll
+STRIPE_SECRET_KEY=sk_live_fake_redaction_target_0001
+SESSION_SECRET=ultra-secret-session-value
+NEXTAUTH_SECRET=nextauth-secret-example
+
+YAML snippet:
+auth:
+  username: alice_admin
+  password: SuperSecret!234
+  token: sess_7f4d2b0c1a9e83f5
+
+XML snippet:
+<credentials>
+  <user>alice_admin</user>
+  <password>SuperSecret!234</password>
+  <token>sess_7f4d2b0c1a9e83f5</token>
+</credentials>
+
+================================================================================
+SECTION 18: INTERNATIONAL / ALT FORMATS
+================================================================================
+Personnummer: 850709-1234
+Telefonnummer: 070-123 45 67
+E-post: alice.example@samplemail.test
+Adresse: 12 Testvägen, 722 13 Västerås
+Kontonummer: 1234567890
+Kortnummer: 4111 1111 1111 1111
+
+================================================================================
+SECTION 19: FALSE POSITIVE CONTROL BLOCK
+================================================================================
+This block should ideally remain mostly untouched if your redactor is precise.
+
+The quick brown fox jumps over 13 lazy dogs.
+Meeting room code: BLUE-ROOM-4
+Example release tag: v2026.03.14-beta
+Reference text: tokenization, passwordless, cardholder, sessional
+Random number: 123456
+Timestamp: 2026-03-14T10:22:31Z
+Host example only: server.example.test
+Sample masked card: **** **** **** 4242
+Doc sentence: Use the word password in UI copy, but do not include any actual secret.
+Another doc sentence: The field is called token but contains no real value here.
+
+================================================================================
+SECTION 20: EXPECTED REDACTION HOTSPOTS CHECKLIST
+================================================================================
+The following categories appear in this file and should be tested:
+- names
+- email addresses
+- phone numbers
+- SSNs / national IDs
+- driver license / passport
+- street addresses / coordinates
+- credit cards / bank data / IBAN / SWIFT
+- usernames when considered sensitive
+- passwords / PINs / passcodes
+- session tokens / refresh tokens / JWTs
+- API keys / OAuth-like tokens / cloud secrets
+- private keys / SSH key material
+- IP addresses / MAC addresses / hostnames
+- DSNs / URIs with embedded credentials
+- cookies / authorization headers
+- medical identifiers and diagnosis text
+- JSON / CSV / TSV / shell / env / YAML / XML
+- freeform prose
+- multiline secrets
+- URL-encoded / escaped / partially masked values
+- duplicated sensitive values
+- false-positive control examples
+
+================================================================================
+SECTION 21: TRICKY REAL-WORLD BYPASS CASES
+================================================================================
+
+# Unicode homoglyph attacks (looks normal but isn't)
+Password: pаssword123   # first "a" is Cyrillic
+Email: аlice@example.com  # first "a" is Cyrillic
+
+# Zero-width characters
+Password: pass​word123
+Token: tok​en_abcdef
+
+# Split secrets across lines (hard mode)
+API Key Part 1: sk_live_
+API Key Part 2: abcdef1234567890
+
+# Concatenated secrets in code
+const password = "Super" + "Secret" + "123";
+
+# Secrets in comments
+// password: UltraSecret!987
+# token=sess_ab12cd34ef56gh78
+
+# JSON but as string blob
+"{\"auth\":\"Bearer sess_ab12cd34ef56gh78\",\"password\":\"UltraSecret!987\"}"
+
+# Double-encoded
+Base64(URL(password)): U3VwZXJTZWNyZXQlMjEyMw==
+
+# URL fragment instead of query
+https://example.test/reset#token=sess_ab12cd34ef56gh78
+
+# Mixed delimiters
+password | UltraSecret!987
+password -> UltraSecret!987
+password => UltraSecret!987
+
+# Log truncation edge case
+password=SuperSe...
+token=sess_ab12...
+
+# Environment variable with export
+export PASSWORD=UltraSecret!987
+
+# Kubernetes secret-like
+data:
+  password: UltraSecret!987
+
+# HTML form
+<input type="hidden" name="token" value="sess_ab12cd34ef56gh78">
+
+# JWT inside Authorization but truncated
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# Credit card without spaces
+Card: 4111111111111111
+
+# IBAN without spaces
+IBAN: DE89370400440532013000
+
+# Email with unusual but valid format
+Email: "alice..test"@example.com
+
+# IPv4 embedded in text
+Connection from user@203.0.113.42 succeeded
+
+# MAC without separators
+MAC: 001A2B3C4D5E
+
+# Secrets in stack traces
+Error: login failed for user alice_admin with password UltraSecret!987 at auth.go:42
+
+================================================================================
+
+END OF FILE

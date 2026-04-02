@@ -31,6 +31,7 @@
         rec {
           gitx = pkgs.callPackage ./pkgs/gitx.nix { };
           ovpntmp = pkgs.callPackage ./pkgs/ovpntmp.nix { };
+          redact = pkgs.callPackage ./pkgs/redact.nix { };
           default = gitx;
         }
       );
@@ -46,10 +47,15 @@
             type = "app";
             program = "${packages.ovpntmp}/bin/ovpntmp";
           };
+          redactApp = {
+            type = "app";
+            program = "${packages.redact}/bin/redact";
+          };
         in
         {
           gitx = gitxApp;
           ovpntmp = ovpntmpApp;
+          redact = redactApp;
           default = gitxApp;
         }
       );
@@ -60,7 +66,7 @@
           packages = self.packages.${system};
         in
         {
-          inherit (packages) gitx ovpntmp;
+          inherit (packages) gitx ovpntmp redact;
 
           gitx-help = pkgs.runCommand "gitx-help" {
             nativeBuildInputs = [ packages.gitx ];
@@ -72,6 +78,26 @@
             nativeBuildInputs = [ pkgs.bash ];
           } ''
             bash -n ${./tools/ovpntmp/ovpntmp.sh}
+            touch "$out"
+          '';
+
+          redact-help = pkgs.runCommand "redact-help" {
+            nativeBuildInputs = [ packages.redact ];
+          } ''
+            redact --help > "$out"
+          '';
+
+          redact-auto = pkgs.runCommand "redact-auto" {
+            nativeBuildInputs = [ packages.redact ];
+          } ''
+            output="$(printf 'email=test@example.com\ntoken=sk-exampleSecretValue123456789\n' | redact --yes)"
+            case "$output" in
+              *"<redacted>"*) ;;
+              *)
+                echo "expected redacted output"
+                exit 1
+                ;;
+            esac
             touch "$out"
           '';
         }
