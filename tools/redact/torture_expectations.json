@@ -455,6 +455,28 @@
       "description": "section 22 sops version should stay",
       "literal": "  version: 3.7.1",
       "expect": "keep"
+    },
+    {
+      "section": "23",
+      "description": "section 23 wireguard private key line",
+      "literal": "PrivateKey = UJm/klBy7H7Mlf8mWZ3V8L1Y0aR2Qn6pX5cE9tNsD0E="
+    },
+    {
+      "section": "23",
+      "description": "section 23 wireguard preshared key line",
+      "literal": "PresharedKey = H6qL2xW9nVc4pRs7mTy3bDf8kZj5uQa1eIo0cMnYpU8="
+    },
+    {
+      "section": "23",
+      "description": "section 23 wireguard public key should stay",
+      "literal": "PublicKey = r7YwN4vC0pLmQ2sT8xZa5kHd3fGj9uBn6cVe1mAsK4Q=",
+      "expect": "keep"
+    },
+    {
+      "section": "23",
+      "description": "section 23 wireguard endpoint should stay",
+      "literal": "Endpoint = vpn.example.test:51820",
+      "expect": "keep"
     }
   ]
 }

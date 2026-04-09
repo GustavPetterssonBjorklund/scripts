@@ -548,4 +548,19 @@ sops:
 
 ================================================================================
 
+SECTION 23: WIREGUARD-LIKE CONFIG
+================================================================================
+[Interface]
+PrivateKey = UJm/klBy7H7Mlf8mWZ3V8L1Y0aR2Qn6pX5cE9tNsD0E=
+Address = 10.0.0.2/32
+DNS = 1.1.1.1
+
+[Peer]
+PublicKey = r7YwN4vC0pLmQ2sT8xZa5kHd3fGj9uBn6cVe1mAsK4Q=
+PresharedKey = H6qL2xW9nVc4pRs7mTy3bDf8kZj5uQa1eIo0cMnYpU8=
+Endpoint = vpn.example.test:51820
+AllowedIPs = 0.0.0.0/0, ::/0
+
+================================================================================
+
 END OF FILE

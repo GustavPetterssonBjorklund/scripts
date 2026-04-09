@@ -316,7 +316,7 @@ RULES = [
         label="Secret-looking assignment",
         base_score=86,
         pattern=re.compile(
-            r"""(?im)(?:["']?)((?:password|passwd|pwd|passcode|pin|secret|api(?:[_ -]?key)?|token|session(?:[_ -]?token)?|access(?:[_ -]?token)?|refresh(?:[_ -]?token)?|client(?:[_ -]?secret)?|stripe(?:[_ -]?secret)?|session(?:[_ -]?secret)?|nextauth(?:[_ -]?secret)?|aws(?:[_ -]?secret(?:[_ -]?access(?:[_ -]?key)?)?)|secret(?:[_ -]?access(?:[_ -]?key)?)?))(?:["']?)\s*(?::|=|=>|->)\s*(?:'([^']+)'|"([^"]+)"|([^\s,;'"&]+))"""
+            r"""(?im)(?:["']?)((?:password|passwd|pwd|passcode|pin|secret|api(?:[_ -]?key)?|token|session(?:[_ -]?token)?|access(?:[_ -]?token)?|refresh(?:[_ -]?token)?|client(?:[_ -]?secret)?|stripe(?:[_ -]?secret)?|session(?:[_ -]?secret)?|nextauth(?:[_ -]?secret)?|aws(?:[_ -]?secret(?:[_ -]?access(?:[_ -]?key)?)?)|secret(?:[_ -]?access(?:[_ -]?key)?)?|private[_ -]?key|preshared[_ -]?key))(?:["']?)\s*(?::|=|=>|->)\s*(?:'([^']+)'|"([^"]+)"|([^\s,;'"&]+))"""
         ),
         span_getter=span_from_first_group(2, 3, 4),
         validator=is_likely_secret_assignment,
