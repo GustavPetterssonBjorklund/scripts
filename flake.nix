@@ -29,6 +29,7 @@
           pkgs = import nixpkgs { inherit system; };
         in
         rec {
+          copy = pkgs.callPackage ./pkgs/copy.nix { };
           gitx = pkgs.callPackage ./pkgs/gitx.nix { };
           ovpntmp = pkgs.callPackage ./pkgs/ovpntmp.nix { };
           redact = pkgs.callPackage ./pkgs/redact.nix { };
@@ -39,6 +40,10 @@
       apps = forAllSystems (system:
         let
           packages = self.packages.${system};
+          copyApp = {
+            type = "app";
+            program = "${packages.copy}/bin/copy";
+          };
           gitxApp = {
             type = "app";
             program = "${packages.gitx}/bin/gitx";
@@ -53,6 +58,7 @@
           };
         in
         {
+          copy = copyApp;
           gitx = gitxApp;
           ovpntmp = ovpntmpApp;
           redact = redactApp;
@@ -66,7 +72,13 @@
           packages = self.packages.${system};
         in
         {
-          inherit (packages) gitx ovpntmp redact;
+          inherit (packages) copy gitx ovpntmp redact;
+
+          copy-help = pkgs.runCommand "copy-help" {
+            nativeBuildInputs = [ packages.copy ];
+          } ''
+            copy --help > "$out"
+          '';
 
           gitx-help = pkgs.runCommand "gitx-help" {
             nativeBuildInputs = [ packages.gitx ];
