@@ -45,6 +45,27 @@ nix develop
 - `ovpntmp`: choose and run a temporary OpenVPN config from Downloads
 - `redact`: inspect piped stdin, score likely sensitive values, and interactively replace them with `<redacted>`
 
+### gitx AI commit messages
+
+`gitx c --ai` generates a commit message from staged changes with the OpenAI Responses API, opens a small terminal approval screen, and commits only after approval.
+Generated messages use `activity(scope): short info` with a short body for detail.
+
+```bash
+gitx --setup-ai
+gitx a
+gitx c --ai
+```
+
+The default model is `gpt-5.4-nano`. Override it in `~/.config/gitx/config`:
+
+```text
+openai_api_key=your_api_key_here
+ai_model=gpt-5.4-nano
+ai_max_diff_chars=20000
+```
+
+Environment variables still take priority: `OPENAI_API_KEY`, `GITX_AI_MODEL`, `GITX_AI_MAX_DIFF_CHARS`, and `GITX_CONFIG`.
+
 Example:
 
 ```bash

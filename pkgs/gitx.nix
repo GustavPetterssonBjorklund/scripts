@@ -9,7 +9,7 @@ writeShellApplication {
   ];
 
   text = ''
-    exec python3 ${../tools/gitx/gitx.py} "$@"
+    exec python3 ${../tools/gitx}/gitx.py "$@"
   '';
 
   meta = {
