@@ -76,6 +76,8 @@ def generate_commit_message(
 
 
 def build_commit_prompt(diff: str, truncated: bool) -> str:
+    diff_files = split_diff_by_file(diff)
+    summary = build_change_summary(diff_files, truncated)
     prompt = (
         "Generate a git commit message for the staged diff below.\n"
         "Return only the raw commit message text.\n"
@@ -92,12 +94,14 @@ def build_commit_prompt(diff: str, truncated: bool) -> str:
         "Choose a concrete lowercase scope only from the staged file paths or visible changed code; never use an unstaged or merely suggested project name.\n"
         "Prefer the changed command, package, or top-level tool as scope over an internal mechanism such as ai, prompt, config, or parser.\n"
         "Use imperative mood and describe the user-facing behavior change, not just the implementation technique.\n"
+        "Treat removed code, deleted files, and narrowed behavior as important changes to describe, not just added code.\n"
+        "If the structured summary says removals dominate or a subsystem/app/install flow was deleted, prefer a refactor/chore style subject about that removal unless the visible changes clearly show a larger user-facing feature.\n"
         "Make each body bullet explain a distinct important outcome visible from the staged changes.\n"
         "If the diff changes scope selection or context leakage, mention that directly.\n"
     )
     if truncated:
         prompt += "\nThe diff was excerpted; use the complete changed-file list for scope and the visible per-file excerpts for details.\n"
-    prompt += f"\nStaged diff:\n{diff}"
+    prompt += f"\nStructured change summary:\n{summary}\n\nStaged diff:\n{diff}"
     return prompt
 
 
@@ -122,6 +126,48 @@ def prepare_commit_diff(diff: str, max_chars: int) -> tuple[str, bool]:
     excerpts = _build_file_excerpts(diff_files, remaining)
     prepared = f"{manifest}\n\nDiff excerpts by file:\n{excerpts}".strip()
     return _truncate_text(prepared, max_chars), True
+
+
+def build_change_summary(diff_files: list[tuple[str, str]], truncated: bool) -> str:
+    if not diff_files:
+        return "- No staged file changes detected"
+
+    stats = [_file_change_stats(file_path, file_diff) for file_path, file_diff in diff_files]
+    added_files = sum(1 for stat in stats if stat["status"] == "added")
+    modified_files = sum(1 for stat in stats if stat["status"] == "modified")
+    deleted_files = sum(1 for stat in stats if stat["status"] == "deleted")
+    renamed_files = sum(1 for stat in stats if stat["status"] == "renamed")
+    total_additions = sum(int(stat["additions"]) for stat in stats)
+    total_deletions = sum(int(stat["deletions"]) for stat in stats)
+
+    lines = [
+        f"- File counts: {added_files} added, {modified_files} modified, {deleted_files} deleted, {renamed_files} renamed",
+        f"- Changed lines: +{total_additions} / -{total_deletions}",
+        f"- Dominant change: {_dominant_change_label(stats, total_additions, total_deletions)}",
+    ]
+    if truncated:
+        lines.append("- Diff mode: excerpted context; prefer summary and complete path list for high-level intent")
+
+    scope_candidates = _scope_candidates(diff_files)
+    if scope_candidates:
+        lines.append(f"- Scope candidates: {', '.join(scope_candidates)}")
+
+    deleted_paths = [str(stat["path"]) for stat in stats if stat["status"] == "deleted"]
+    if deleted_paths:
+        lines.append(f"- Deleted paths: {', '.join(deleted_paths[:6])}")
+        if len(deleted_paths) > 6:
+            lines.append(f"- Additional deleted paths: {len(deleted_paths) - 6} more")
+
+    major_removed_groups = _major_deleted_groups(deleted_paths)
+    if major_removed_groups:
+        lines.append(f"- Major removals: {', '.join(major_removed_groups[:4])}")
+
+    impactful_files = _top_impact_files(stats)
+    if impactful_files:
+        lines.append("- Highest-impact files:")
+        lines.extend(f"  {entry}" for entry in impactful_files)
+
+    return "\n".join(lines)
 
 
 def split_diff_by_file(diff: str) -> list[tuple[str, str]]:
@@ -151,11 +197,32 @@ def _extract_diff_path(header_line: str) -> str:
     return match.group(2)
 
 
+def _file_change_stats(file_path: str, file_diff: str) -> dict[str, object]:
+    additions, deletions = _count_content_changes(file_diff)
+    status = "modified"
+    if "\nnew file mode " in f"\n{file_diff}":
+        status = "added"
+    elif "\ndeleted file mode " in f"\n{file_diff}":
+        status = "deleted"
+    elif "\nrename from " in f"\n{file_diff}" or "\nrename to " in f"\n{file_diff}":
+        status = "renamed"
+
+    return {
+        "path": file_path or "(unknown file)",
+        "status": status,
+        "additions": additions,
+        "deletions": deletions,
+        "impact": additions + deletions,
+    }
+
+
 def _build_changed_file_manifest(diff_files: list[tuple[str, str]]) -> str:
     lines = ["Changed files (complete staged path list):"]
     for file_path, file_diff in diff_files:
         display_path = file_path or "(unknown file)"
-        lines.append(f"- {display_path} ({len(file_diff)} diff chars)")
+        additions, deletions = _count_content_changes(file_diff)
+        change_summary = f", +{additions}/-{deletions} changed lines" if additions or deletions else ""
+        lines.append(f"- {display_path} ({len(file_diff)} diff chars{change_summary})")
 
     scope_candidates = _scope_candidates(diff_files)
     if scope_candidates:
@@ -163,6 +230,55 @@ def _build_changed_file_manifest(diff_files: list[tuple[str, str]]) -> str:
         lines.append("Scope candidates from staged paths, strongest first:")
         lines.extend(f"- {scope}" for scope in scope_candidates)
     return "\n".join(lines)
+
+
+def _dominant_change_label(
+    stats: list[dict[str, object]],
+    total_additions: int,
+    total_deletions: int,
+) -> str:
+    deleted_files = [stat for stat in stats if stat["status"] == "deleted"]
+    if deleted_files and len(deleted_files) >= max(3, len(stats) // 2):
+        groups = _major_deleted_groups([str(stat["path"]) for stat in deleted_files])
+        if groups:
+            return f"removal-heavy; deleted subsystem candidates: {', '.join(groups[:2])}"
+        return "removal-heavy; deleted files dominate"
+    if total_deletions > total_additions * 2:
+        return "removal-heavy; deleted lines dominate"
+    if total_additions > total_deletions * 2:
+        return "addition-heavy; new code dominates"
+    return "mixed update"
+
+
+def _major_deleted_groups(paths: list[str]) -> list[str]:
+    groups: dict[str, int] = {}
+    for path in paths:
+        parts = [part for part in path.split("/") if part]
+        if len(parts) >= 2:
+            key = "/".join(parts[:2])
+        elif parts:
+            key = parts[0]
+        else:
+            continue
+        groups[key] = groups.get(key, 0) + 1
+    ordered = sorted(groups.items(), key=lambda item: (-item[1], item[0]))
+    return [f"{path} ({count} files)" for path, count in ordered if count >= 2]
+
+
+def _top_impact_files(stats: list[dict[str, object]]) -> list[str]:
+    ordered = sorted(
+        stats,
+        key=lambda stat: (-int(stat["impact"]), str(stat["path"])),
+    )
+    entries: list[str] = []
+    for stat in ordered[:5]:
+        impact = int(stat["impact"])
+        if impact <= 0:
+            continue
+        entries.append(
+            f"- {stat['path']} ({stat['status']}, +{stat['additions']} / -{stat['deletions']})"
+        )
+    return entries
 
 
 def _scope_candidates(diff_files: list[tuple[str, str]]) -> list[str]:
@@ -249,6 +365,9 @@ def _metadata_excerpt(file_diff: str) -> str:
             or line.startswith("@@")
         ):
             lines.append(line)
+    additions, deletions = _count_content_changes(file_diff)
+    if additions or deletions:
+        lines.append(f"content changes: +{additions} / -{deletions}")
     return "\n".join(lines) or file_diff.splitlines()[0]
 
 
@@ -256,17 +375,111 @@ def _sample_changed_lines(file_diff: str, max_chars: int) -> str:
     if max_chars <= 0:
         return ""
 
-    lines: list[str] = []
-    used = 0
+    removed_lines: list[str] = []
+    added_lines: list[str] = []
     for line in file_diff.splitlines():
         if not _is_content_change_line(line):
             continue
+        if line.startswith("-"):
+            removed_lines.append(line)
+        else:
+            added_lines.append(line)
+
+    sampled_lines = _take_balanced_changed_lines(removed_lines, added_lines, max_chars)
+    return "\n".join(sampled_lines)
+
+
+def _count_content_changes(file_diff: str) -> tuple[int, int]:
+    additions = 0
+    deletions = 0
+    for line in file_diff.splitlines():
+        if not _is_content_change_line(line):
+            continue
+        if line.startswith("+"):
+            additions += 1
+        elif line.startswith("-"):
+            deletions += 1
+    return additions, deletions
+
+
+def _take_balanced_changed_lines(removed_lines: list[str], added_lines: list[str], max_chars: int) -> list[str]:
+    groups: list[list[str]] = []
+    if removed_lines:
+        groups.append(removed_lines)
+    if added_lines:
+        groups.append(added_lines)
+    if not groups:
+        return []
+
+    total_lines = sum(len(group) for group in groups)
+    min_reserved_chars = sum(min(len(group), 1) for group in groups)
+    if min_reserved_chars > max_chars:
+        return _fill_from_groups(groups, max_chars)
+
+    quotas = [0] * len(groups)
+    remaining_slots = total_lines
+    remaining_budget = max_chars
+
+    for index, group in enumerate(groups):
+        shortest = min(len(line) + 1 for line in group)
+        quotas[index] = 1
+        remaining_slots -= 1
+        remaining_budget -= shortest
+
+    if remaining_slots > 0 and remaining_budget > 0:
+        for index, group in enumerate(groups):
+            extra_capacity = len(group) - quotas[index]
+            if extra_capacity <= 0:
+                continue
+            share = max(0, int(remaining_budget * extra_capacity / remaining_slots))
+            quotas[index] += _fit_lines(group, quotas[index], share)
+
+    selected: list[str] = []
+    for index, group in enumerate(groups):
+        selected.extend(group[:quotas[index]])
+
+    used_chars = sum(len(line) + 1 for line in selected)
+    if used_chars > max_chars:
+        return _fill_from_groups(groups, max_chars)
+
+    remaining_lines = [group[quotas[index]:] for index, group in enumerate(groups)]
+    remaining_budget = max_chars - used_chars
+    selected.extend(_fill_from_groups(remaining_lines, remaining_budget))
+    return selected
+
+
+def _fit_lines(lines: list[str], start_index: int, budget: int) -> int:
+    used = 0
+    taken = 0
+    for line in lines[start_index:]:
         cost = len(line) + 1
-        if used + cost > max_chars:
+        if used + cost > budget:
             break
-        lines.append(line)
         used += cost
-    return "\n".join(lines)
+        taken += 1
+    return taken
+
+
+def _fill_from_groups(groups: list[list[str]], max_chars: int) -> list[str]:
+    selected: list[str] = []
+    used = 0
+    index = 0
+    while True:
+        progressed = False
+        for group in groups:
+            if index >= len(group):
+                continue
+            line = group[index]
+            cost = len(line) + 1
+            if used + cost > max_chars:
+                continue
+            selected.append(line)
+            used += cost
+            progressed = True
+        if not progressed:
+            break
+        index += 1
+    return selected
 
 
 def _is_content_change_line(line: str) -> bool:
@@ -308,7 +521,7 @@ def request_openai_text(prompt: str, max_output_tokens: int) -> Optional[str]:
         print("Set OPENAI_API_KEY or add openai_api_key to ~/.config/gitx/config.")
         return None
 
-    model = get_config_value("ai_model") or "gpt-5.4-nano"
+    model = get_config_value("ai_model") or "gpt-5.4-mini"
     payload = json.dumps({
         "model": model,
         "input": prompt,

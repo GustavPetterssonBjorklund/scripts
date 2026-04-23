@@ -49,14 +49,16 @@ nix develop
 
 `gitx c --ai` generates a commit message from staged changes with the OpenAI Responses API, opens a small terminal approval screen, and commits only after approval.
 Generated messages use `activity(scope): short info` with a short body for detail.
+Before sending the diff to the model, gitx now adds a structured change summary with file counts, line counts, scope candidates, deleted-path highlights, and highest-impact files.
 When the staged diff exceeds `ai_max_diff_chars`, gitx keeps a complete changed-file list and uses per-file excerpts so large early assets do not hide later code changes.
+Truncated AI prompts also include per-file add/remove counts and preserve deleted lines in excerpts so removal-heavy changes still influence the generated message.
 While waiting for OpenAI, the terminal UI shows the current stage of prompt preparation and response generation.
 
-The default model is `gpt-5.4-nano`. Override it in `~/.config/gitx/config`:
+The default model is `gpt-5.4-mini`. Override it in `~/.config/gitx/config`:
 
 ```text
 openai_api_key=your_api_key_here
-ai_model=gpt-5.4-nano
+ai_model=gpt-5.4-mini
 ai_max_diff_chars=20000
 ```
 

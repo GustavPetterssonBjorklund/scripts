@@ -11,13 +11,13 @@ DEFAULT_PROJECTS_PATH = "~/.config/gitx/projects.toml"
 @dataclass
 class GitXConfig:
     openai_api_key: str | None = None
-    ai_model: str = "gpt-5.4-nano"
+    ai_model: str = "gpt-5.4-mini"
     ai_max_diff_chars: int = 20000
     
     @classmethod
     def from_kwargs(cls, **kwargs: Any) -> "GitXConfig":
         openai_api_key_value = kwargs.get("openai_api_key")
-        ai_model_value = kwargs.get("ai_model", "gpt-5.4-nano")
+        ai_model_value = kwargs.get("ai_model", "gpt-5.4-mini")
         ai_max_diff_chars_value = kwargs.get("ai_max_diff_chars", 20000)
 
         return cls(
