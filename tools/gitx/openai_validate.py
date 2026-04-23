@@ -1,12 +1,11 @@
 import json
-import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from enum import IntEnum
 from typing import Callable, Optional
 
 from config import ProjectRules, get_config_value
-from openai_commit import request_openai_text
+from openai_commit import request_openai_text, split_diff_by_file
 
 
 class Severity(IntEnum):
@@ -59,7 +58,7 @@ def validate_diff(
     findings: list[ValidationFinding] = []
     used_truncated_diff = False
     all_passed = True
-    diff_files = _split_diff_by_file(diff)
+    diff_files = split_diff_by_file(diff)
     if not diff_files:
         diff_files = [("", diff.strip())]
 
@@ -174,33 +173,6 @@ def _build_validation_prompt(project_rules: ProjectRules, file_path: str, file_d
 def _truncate_diff(diff: str, max_diff_chars: int) -> tuple[str, bool]:
     truncated = len(diff) > max_diff_chars
     return diff[:max_diff_chars], truncated
-
-
-def _split_diff_by_file(diff: str) -> list[tuple[str, str]]:
-    files: list[tuple[str, str]] = []
-    current_path = ""
-    current_lines: list[str] = []
-
-    for line in diff.splitlines():
-        if line.startswith("diff --git "):
-            if current_lines:
-                files.append((current_path, "\n".join(current_lines).strip()))
-            current_path = _extract_diff_path(line)
-            current_lines = [line]
-            continue
-        current_lines.append(line)
-
-    if current_lines:
-        files.append((current_path, "\n".join(current_lines).strip()))
-
-    return files
-
-
-def _extract_diff_path(header_line: str) -> str:
-    match = re.match(r"diff --git a/(.+?) b/(.+)$", header_line)
-    if not match:
-        return ""
-    return match.group(2)
 
 
 def format_validation_findings(findings: list[ValidationFinding]) -> str:

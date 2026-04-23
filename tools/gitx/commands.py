@@ -63,9 +63,9 @@ def commit(git_args: list[str]):
 
     used_truncated_diff = False
 
-    def generate_message() -> str | None:
+    def generate_message(progress: Callable[[str], None]) -> str | None:
         nonlocal used_truncated_diff
-        response = generate_commit_message(diff)
+        response = generate_commit_message(diff, progress)
         if not response or not response.output_text:
             return None
         used_truncated_diff = response.used_truncated_diff

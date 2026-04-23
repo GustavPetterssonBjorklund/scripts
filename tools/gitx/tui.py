@@ -43,14 +43,14 @@ def edit_file(path: str) -> bool:
 
 
 def approve_generated_commit_message(
-    generate_message: Callable[[], str | None],
+    generate_message: Callable[[Callable[[str], None]], str | None],
     validation_findings: str | None = None,
 ) -> str | None:
     if not sys.stdin.isatty() or not sys.stdout.isatty():
         if validation_findings and not prompt_approve_validation_findings(validation_findings):
             return None
         print("\nGenerating AI commit message...")
-        message = generate_message()
+        message = generate_message(lambda _message: None)
         return prompt_approve_commit_message(message) if message else None
 
     try:
@@ -65,7 +65,7 @@ def approve_generated_commit_message(
         if validation_findings and not prompt_approve_validation_findings(validation_findings):
             return None
         print("\nGenerating AI commit message...")
-        message = generate_message()
+        message = generate_message(lambda message: print(message))
         return prompt_approve_commit_message(message) if message else None
 
 
@@ -143,7 +143,7 @@ def _approval_screen(stdscr: CursesWindow, message: str) -> str | None:
 
 def _generated_commit_message_flow(
     stdscr: CursesWindow,
-    generate_message: Callable[[], str | None],
+    generate_message: Callable[[Callable[[str], None]], str | None],
     validation_findings: str | None,
 ) -> str | None:
     curses.curs_set(0)
@@ -152,12 +152,14 @@ def _generated_commit_message_flow(
     if validation_findings and not _validation_screen(stdscr, validation_findings):
         return None
 
+    status: queue.Queue[str] = queue.Queue()
     message = _run_with_loading(
         stdscr,
         title="Generating commit message",
-        subtitle="Asking OpenAI to summarize the staged diff.",
-        body="This can take a few seconds.",
-        callback=generate_message,
+        subtitle="Preparing staged context before calling OpenAI.",
+        body="Starting AI commit-message generation...",
+        callback=lambda: generate_message(status.put),
+        status=status,
     )
     if not isinstance(message, str) or not message:
         return None
