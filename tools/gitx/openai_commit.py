@@ -5,6 +5,8 @@ import urllib.request
 from config import get_config_value, get_openai_api_key
 from dataclasses import dataclass
 from typing import Any, Optional
+
+
 @dataclass
 class OpenAIResponse:
     output_text: str | None = None
@@ -24,13 +26,6 @@ def extract_response_text(data: dict[str, Any]) -> Optional[str]:
 
 
 def generate_commit_message(diff: str) -> Optional[OpenAIResponse]:
-    api_key = get_openai_api_key()
-    if not api_key:
-        print("OpenAI API key is not set.")
-        print("Set OPENAI_API_KEY or add openai_api_key to ~/.config/gitx/config.")
-        return None
-
-    model = get_config_value("ai_model") or "gpt-5.4-nano"
     try:
         max_diff_chars = int(get_config_value("ai_max_diff_chars") or "20000")
     except ValueError:
@@ -60,10 +55,28 @@ def generate_commit_message(diff: str) -> Optional[OpenAIResponse]:
         prompt += "\nThe diff was truncated; summarize only the visible changes.\n"
     prompt += f"\nStaged diff:\n{diff}"
 
+    text = request_openai_text(prompt, max_output_tokens=120)
+    if text is None:
+        return None
+
+    return OpenAIResponse(
+        output_text=text,
+        used_truncated_diff=truncated
+    )
+
+
+def request_openai_text(prompt: str, max_output_tokens: int) -> Optional[str]:
+    api_key = get_openai_api_key()
+    if not api_key:
+        print("OpenAI API key is not set.")
+        print("Set OPENAI_API_KEY or add openai_api_key to ~/.config/gitx/config.")
+        return None
+
+    model = get_config_value("ai_model") or "gpt-5.4-nano"
     payload = json.dumps({
         "model": model,
         "input": prompt,
-        "max_output_tokens": 120,
+        "max_output_tokens": max_output_tokens,
     }).encode("utf-8")
 
     request = urllib.request.Request(
@@ -88,10 +101,7 @@ def generate_commit_message(diff: str) -> Optional[OpenAIResponse]:
         print(f"OpenAI API request failed: {error}")
         return None
 
-    return OpenAIResponse(
-        output_text=extract_response_text(data),
-        used_truncated_diff=truncated
-    )
+    return extract_response_text(data)
 
 
 def clean_commit_message(message: str) -> str:

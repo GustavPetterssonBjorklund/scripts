@@ -1,6 +1,6 @@
 import sys
 
-from commands import add, checkout_branch, clone, commit, push
+from commands import add, checkout_branch, clone, commit, push, validate
 from config import setup_ai_config
 from git_runner import run
 
@@ -23,6 +23,10 @@ def print_usage():
   {GREEN}s{RESET}              {YELLOW}Show git status{RESET}
   {GREEN}c{RESET} [message]    {YELLOW}Commit with message{RESET} (default: opens editor)
   {GREEN}c --ai{RESET}          {YELLOW}Generate commit message from staged diff{RESET}
+  {GREEN}c --validate{RESET}    {YELLOW}Validate staged diff before opening git commit{RESET}
+  {GREEN}c --ai --validate{RESET} {YELLOW}Validate staged diff against project rules before AI commit{RESET}
+  {GREEN}validate{RESET}        {YELLOW}Validate staged diff against project rules{RESET}
+  {GREEN}validate --edit-rules{RESET} {YELLOW}Create or edit project validation rules{RESET}
   {GREEN}p{RESET} [remote]     {YELLOW}Push to remote{RESET} (default: origin)
   {GREEN}l{RESET}              {YELLOW}Show git log in one line format{RESET}
   {GREEN}pl{RESET}             {YELLOW}Pull from remote{RESET}
@@ -52,6 +56,7 @@ def main():
         "a": lambda: add(git_args),
         "s": lambda: run(["git", "status"]),
         "c": lambda: commit(git_args),
+        "validate": lambda: validate(git_args),
         "p": lambda: push(git_args),
         "l": lambda: run(["git", "log", "--oneline"]),
         "pl": lambda: run(["git", "pull"]),

@@ -50,12 +50,6 @@ nix develop
 `gitx c --ai` generates a commit message from staged changes with the OpenAI Responses API, opens a small terminal approval screen, and commits only after approval.
 Generated messages use `activity(scope): short info` with a short body for detail.
 
-```bash
-gitx --setup-ai
-gitx a
-gitx c --ai
-```
-
 The default model is `gpt-5.4-nano`. Override it in `~/.config/gitx/config`:
 
 ```text
@@ -65,6 +59,30 @@ ai_max_diff_chars=20000
 ```
 
 Environment variables still take priority: `OPENAI_API_KEY`, `GITX_AI_MODEL`, `GITX_AI_MAX_DIFF_CHARS`, and `GITX_CONFIG`.
+
+AI validation reads project-specific rules from `~/.config/gitx/projects.toml`.
+The most specific matching path wins.
+Run `gitx validate --edit-rules` to create or edit the rules file for the current repository.
+
+```toml
+[[project]]
+path = "/home/gustav/Documents/github/scripts"
+rules = [
+  "Update README.md when changing public gitx command behavior.",
+  "Keep tools/gitx stdlib-only unless the change explicitly justifies a dependency.",
+  "Do not commit secrets, API keys, or local machine credentials.",
+]
+```
+
+Rules can also live in a separate file, relative to `~/.config/gitx`:
+
+```toml
+[[project]]
+path = "/home/gustav/Documents/github/scripts"
+rules_file = "projects/scripts.md"
+```
+
+Override the project config path with `GITX_PROJECTS_CONFIG`.
 
 Example:
 
