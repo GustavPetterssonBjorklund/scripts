@@ -145,6 +145,9 @@ def resolve_text(args: argparse.Namespace, parser: argparse.ArgumentParser) -> s
     if args.text:
         return " ".join(args.text)
 
+    if stdin_has_data():
+        return sys.stdin.read()
+
     invocations = [PROGRAM_NAME]
     if args.primary:
         invocations.extend([f"{PROGRAM_NAME} --primary", f"{PROGRAM_NAME} -p"])
@@ -152,9 +155,6 @@ def resolve_text(args: argparse.Namespace, parser: argparse.ArgumentParser) -> s
     recovered = read_tmux_previous_command(invocations)
     if recovered is not None:
         return recovered
-
-    if stdin_has_data():
-        return sys.stdin.read()
 
     parser.exit(
         2,

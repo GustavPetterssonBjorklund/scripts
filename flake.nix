@@ -80,6 +80,51 @@
             copy --help > "$out"
           '';
 
+          copy-tests = pkgs.runCommand "copy-tests" {
+            nativeBuildInputs = [ pkgs.python3 ];
+          } ''
+            python - <<'PY'
+            import argparse
+            import importlib.util
+            from unittest.mock import patch
+
+            module_path = "${./tools/copy/copy.py}"
+            module_spec = importlib.util.spec_from_file_location("copy_tool", module_path)
+            assert module_spec is not None and module_spec.loader is not None
+            copy_module = importlib.util.module_from_spec(module_spec)
+            module_spec.loader.exec_module(copy_module)
+
+
+            def assert_equal(left, right):
+                if left != right:
+                    raise AssertionError(f"expected {right!r}, got {left!r}")
+
+
+            parser = argparse.ArgumentParser(prog="copy")
+
+            args = argparse.Namespace(primary=False, text=["Hello", "World"])
+            with patch.object(copy_module, "stdin_has_data", return_value=True):
+                with patch.object(copy_module, "read_tmux_previous_command", return_value="tmux text\n"):
+                    with patch.object(copy_module.sys, "stdin") as fake_stdin:
+                        fake_stdin.read.return_value = "stdin text\n"
+                        assert_equal(copy_module.resolve_text(args, parser), "Hello World")
+
+            args = argparse.Namespace(primary=False, text=[])
+            with patch.object(copy_module, "stdin_has_data", return_value=True):
+                with patch.object(copy_module, "read_tmux_previous_command", return_value="tmux text\n"):
+                    with patch.object(copy_module.sys, "stdin") as fake_stdin:
+                        fake_stdin.read.return_value = "stdin text\n"
+                        assert_equal(copy_module.resolve_text(args, parser), "stdin text\n")
+
+            args = argparse.Namespace(primary=True, text=[])
+            with patch.object(copy_module, "stdin_has_data", return_value=False):
+                with patch.object(copy_module, "read_tmux_previous_command", return_value="tmux text\n") as read_tmux:
+                    assert_equal(copy_module.resolve_text(args, parser), "tmux text\n")
+                    read_tmux.assert_called_once_with(["copy", "copy --primary", "copy -p"])
+            PY
+            touch "$out"
+          '';
+
           gitx-help = pkgs.runCommand "gitx-help" {
             nativeBuildInputs = [ packages.gitx ];
           } ''
