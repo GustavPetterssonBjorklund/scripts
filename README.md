@@ -45,6 +45,9 @@ nix develop
 - `ovpntmp`: choose and run a temporary OpenVPN config from Downloads
 - `redact`: inspect piped stdin, score likely sensitive values, and interactively replace them with `<redacted>`
 
+`gitx c <message>` commits with `-m "<message>"`. When commit arguments include git flags, gitx passes them through to `git commit`, so commands such as `gitx c --amend` and `gitx c --amend --no-edit` keep normal git behavior.
+Commands without a gitx alias pass through to git directly, so `gitx tag`, `gitx branch`, `gitx rebase`, and other git commands work as expected.
+
 ### gitx AI commit messages
 
 `gitx c --ai` generates a commit message from staged changes with the OpenAI Responses API, opens a small terminal approval screen, and commits only after approval.
@@ -53,6 +56,12 @@ Before sending the diff to the model, gitx now adds a structured change summary 
 When the staged diff exceeds `ai_max_diff_chars`, gitx keeps a complete changed-file list and uses per-file excerpts so large early assets do not hide later code changes.
 Truncated AI prompts also include per-file add/remove counts and preserve deleted lines in excerpts so removal-heavy changes still influence the generated message.
 While waiting for OpenAI, the terminal UI shows the current stage of prompt preparation and response generation.
+
+### gitx AI tags
+
+`gitx tag --ai` suggests the next annotated semantic version tag from recent commits since the latest tag.
+Before generating the suggestion, the terminal UI shows the latest tag and recent tag history.
+The approval screen lets you switch the bump to patch, minor, or major, or edit both the tag name and annotated tag message in your editor before running `git tag -a`.
 
 The default model is `gpt-5.4-mini`. Override it in `~/.config/gitx/config`:
 

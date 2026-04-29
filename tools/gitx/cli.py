@@ -1,6 +1,6 @@
 import sys
 
-from commands import add, checkout_branch, clone, commit, push, validate
+from commands import add, checkout_branch, clone, commit, push, tag, validate
 from config import setup_ai_config
 from git_runner import run
 
@@ -21,10 +21,11 @@ def print_usage():
 {BOLD}Commands:{RESET}
   {GREEN}a{RESET} [files...]   {YELLOW}Add files to staging area{RESET} (default: all files)
   {GREEN}s{RESET}              {YELLOW}Show git status{RESET}
-  {GREEN}c{RESET} [message]    {YELLOW}Commit with message{RESET} (default: opens editor)
+  {GREEN}c{RESET} [message|git-args] {YELLOW}Commit with message or pass flags to git commit{RESET}
   {GREEN}c --ai{RESET}          {YELLOW}Generate commit message from staged diff{RESET}
   {GREEN}c --validate{RESET}    {YELLOW}Validate staged diff before opening git commit{RESET}
   {GREEN}c --ai --validate{RESET} {YELLOW}Validate staged diff against project rules before AI commit{RESET}
+  {GREEN}tag --ai{RESET}        {YELLOW}Suggest an annotated version tag from recent commits{RESET}
   {GREEN}validate{RESET}        {YELLOW}Validate staged diff against project rules{RESET}
   {GREEN}validate --edit-rules{RESET} {YELLOW}Create or edit project validation rules{RESET}
   {GREEN}p{RESET} [remote]     {YELLOW}Push to remote{RESET} (default: origin)
@@ -33,6 +34,8 @@ def print_usage():
   {GREEN}cl{RESET} <repo-url>   {YELLOW}Clone a repository{RESET}
   {GREEN}cb{RESET} <branch-name> {YELLOW}Create and checkout a new branch{RESET}
   {GREEN}--setup-ai{RESET}       {YELLOW}Configure OpenAI API key for AI commits{RESET}
+
+All other commands pass through to git, for example: gitx tag, gitx branch, gitx rebase.
 """
     print(usage.strip())
 
@@ -56,6 +59,7 @@ def main():
         "a": lambda: add(git_args),
         "s": lambda: run(["git", "status"]),
         "c": lambda: commit(git_args),
+        "tag": lambda: tag(git_args),
         "validate": lambda: validate(git_args),
         "p": lambda: push(git_args),
         "l": lambda: run(["git", "log", "--oneline"]),
@@ -64,8 +68,7 @@ def main():
         "cb": lambda: checkout_branch(git_args),
     }
 
-    if git_command not in commands:
-        print(f"Unknown command: {git_command} \nUse -h or --help for usage.")
-        return 1
+    if git_command in commands:
+        return commands[git_command]()
 
-    return commands[git_command]()
+    return run(["git", git_command, *git_args])

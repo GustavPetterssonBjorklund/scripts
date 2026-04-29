@@ -4,9 +4,11 @@ from collections.abc import Callable
 from config import ensure_project_rules_file, get_project_rules, projects_config_path
 from git_runner import output, run
 from openai_commit import clean_commit_message, generate_commit_message
+from openai_tag import generate_tag_suggestion
 from openai_validate import ValidationResponse, validate_diff
 from tui import (
     approve_generated_commit_message,
+    approve_generated_tag,
     approve_validation_findings,
     edit_file,
     run_validation_with_loading,
@@ -27,11 +29,13 @@ def commit(git_args: list[str]):
     ai = "--ai" in flag_args
     validate = "--validate" in flag_args
     unknown_flags = [arg for arg in flag_args if arg not in ("--ai", "--validate")]
-    if unknown_flags or (message_args and (ai or validate)):
+    if (ai or validate) and (unknown_flags or message_args):
         print("Usage: gitx c [message] | gitx c --validate | gitx c --ai [--validate]")
         return 1
 
     if not ai and not validate:
+        if any(arg.startswith("-") for arg in git_args):
+            return run(["git", "commit", *git_args])
         return run(["git", "commit", "-m", " ".join(git_args)])
 
     diff = _staged_diff()
@@ -102,8 +106,71 @@ def validate(git_args: list[str]):
     return _run_validation(diff, prompt_to_continue=False)
 
 
+def tag(git_args: list[str]):
+    if git_args != ["--ai"]:
+        return run(["git", "tag", *git_args])
+
+    context = _tag_context()
+    if context is None:
+        return 1
+
+    suggestion = approve_generated_tag(
+        lambda progress: generate_tag_suggestion(
+            previous_tags=context["previous_tags"],
+            latest_tag=context["latest_tag"],
+            recent_commits=context["recent_commits"],
+            progress=progress,
+        ),
+        previous_info=context["previous_info"],
+        latest_tag=context["latest_tag"],
+    )
+    if suggestion is None:
+        print("Tag cancelled.")
+        return 1
+
+    tag_name, message = suggestion
+    return run(["git", "tag", "-a", tag_name, "-m", message])
+
+
 def push(git_args: list[str]):
     return run(["git", "push", *git_args] if git_args else ["git", "push"])
+
+
+def _tag_context() -> dict[str, str] | None:
+    latest_tag_result = output(["git", "describe", "--tags", "--abbrev=0"])
+    latest_tag = latest_tag_result.stdout.strip() if latest_tag_result.returncode == 0 else ""
+
+    tags_result = output([
+        "git",
+        "for-each-ref",
+        "--sort=-creatordate",
+        "--count=5",
+        "--format=%(refname:short)%09%(creatordate:short)%09%(subject)",
+        "refs/tags",
+    ])
+    if tags_result.returncode != 0:
+        print(tags_result.stderr.strip() or "Failed to read previous tags.")
+        return None
+
+    log_range = f"{latest_tag}..HEAD" if latest_tag else "HEAD"
+    commits_result = output(["git", "log", "--oneline", "--decorate=short", "-n", "30", log_range])
+    if commits_result.returncode != 0:
+        print(commits_result.stderr.strip() or "Failed to read recent commits.")
+        return None
+
+    previous_tags = tags_result.stdout.strip() or "No previous tags."
+    recent_commits = commits_result.stdout.strip()
+    if not recent_commits:
+        print("No commits since the latest tag.")
+        return None
+
+    previous_info = f"Latest tag: {latest_tag or 'none'}\n\nRecent tags:\n{previous_tags}"
+    return {
+        "latest_tag": latest_tag,
+        "previous_tags": previous_tags,
+        "previous_info": previous_info,
+        "recent_commits": recent_commits,
+    }
 
 
 def clone(git_args: list[str]):
