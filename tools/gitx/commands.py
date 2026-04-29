@@ -3,14 +3,17 @@ from collections.abc import Callable
 
 from config import ensure_project_rules_file, get_project_rules, projects_config_path
 from git_runner import output, run
-from openai_commit import clean_commit_message, generate_commit_message
+from openai_commit import clean_commit_message, generate_commit_message, generate_merge_resolution
 from openai_tag import generate_tag_suggestion
 from openai_validate import ValidationResponse, validate_diff
 from tui import (
     approve_generated_commit_message,
     approve_generated_tag,
     approve_validation_findings,
+    choose_merge_action,
     edit_file,
+    MergeBranch,
+    MergeConflict,
     run_validation_with_loading,
     show_validation_result,
 )
@@ -130,6 +133,417 @@ def tag(git_args: list[str]):
 
     tag_name, message = suggestion
     return run(["git", "tag", "-a", tag_name, "-m", message])
+
+
+def merge(git_args: list[str]):
+    if git_args:
+        return run(["git", "merge", *git_args])
+
+    while True:
+        context = _merge_context()
+        if context is None:
+            return 1
+
+        action = choose_merge_action(
+            branches=context["branches"],
+            current_branch=context["current_branch"],
+            status=context["status"],
+            preview_for_branch=_merge_preview,
+            merge_in_progress=context["merge_in_progress"],
+            conflicts=context["conflicts"],
+            conflict_context_for_path=_merge_conflict_context,
+            ai_resolution_for_path=_generate_ai_merge_resolution,
+        )
+        if action is None:
+            print("Merge cancelled.")
+            return 1
+
+        if action.action == "abort":
+            return run(["git", "merge", "--abort"])
+        if action.action == "continue":
+            return run(["git", "merge", "--continue"])
+        if action.action == "use-current":
+            if not action.path:
+                print("No conflicted file selected.")
+                return 1
+            result = run(["git", "checkout", "--ours", "--", action.path])
+            if result != 0:
+                return result
+            result = run(["git", "add", action.path])
+            if result != 0:
+                return result
+            continue
+        if action.action == "use-incoming":
+            if not action.path:
+                print("No conflicted file selected.")
+                return 1
+            result = run(["git", "checkout", "--theirs", "--", action.path])
+            if result != 0:
+                return result
+            result = run(["git", "add", action.path])
+            if result != 0:
+                return result
+            continue
+        if action.action == "use-both":
+            if not action.path:
+                print("No conflicted file selected.")
+                return 1
+            if not _resolve_conflict_file(action.path, "both"):
+                return 1
+            result = run(["git", "add", action.path])
+            if result != 0:
+                return result
+            continue
+        if action.action == "use-ai":
+            print("AI merge proposals are reviewed in the terminal UI before applying.")
+            continue
+        if action.action == "apply-ai":
+            if not action.path or not action.content:
+                print("No AI merge proposal selected.")
+                return 1
+            if not _write_ai_merge_resolution(action.path, action.content):
+                return 1
+            result = run(["git", "add", action.path])
+            if result != 0:
+                return result
+            continue
+        if action.action == "edit-conflict":
+            if not action.path:
+                print("No conflicted file selected.")
+                return 1
+            if not edit_file(action.path):
+                return 1
+            continue
+        if action.action == "add-conflict":
+            if not action.path:
+                print("No conflicted file selected.")
+                return 1
+            result = run(["git", "add", action.path])
+            if result != 0:
+                return result
+            continue
+        if action.action == "add-all-conflicts":
+            paths = [conflict.path for conflict in context["conflicts"]]
+            if not paths:
+                print("No conflicted files to add.")
+                continue
+            result = run(["git", "add", *paths])
+            if result != 0:
+                return result
+            continue
+        if action.action != "merge" or not action.branch:
+            print("Merge cancelled.")
+            return 1
+
+        command = ["git", "merge"]
+        if action.mode == "no-ff":
+            command.append("--no-ff")
+        elif action.mode == "squash":
+            command.append("--squash")
+        command.append(action.branch)
+        return run(command)
+
+
+def _merge_context() -> dict[str, object] | None:
+    if _repo_root() is None:
+        return None
+
+    current_result = output(["git", "symbolic-ref", "--quiet", "--short", "HEAD"])
+    if current_result.returncode != 0:
+        current_result = output(["git", "rev-parse", "--short", "HEAD"])
+    if current_result.returncode != 0:
+        print(current_result.stderr.strip() or "Failed to read current branch.")
+        return None
+    current_branch = current_result.stdout.strip()
+
+    status_result = output(["git", "status", "--short"])
+    if status_result.returncode != 0:
+        print(status_result.stderr.strip() or "Failed to read git status.")
+        return None
+
+    merge_head = output(["git", "rev-parse", "--quiet", "--verify", "MERGE_HEAD"])
+    branches = _merge_branches(current_branch)
+    if branches is None:
+        return None
+
+    return {
+        "current_branch": current_branch,
+        "status": status_result.stdout.strip(),
+        "merge_in_progress": merge_head.returncode == 0,
+        "branches": branches,
+        "conflicts": parse_merge_conflicts(status_result.stdout),
+    }
+
+
+def _merge_branches(current_branch: str) -> list[MergeBranch] | None:
+    branch_result = output([
+        "git",
+        "for-each-ref",
+        "--sort=-committerdate",
+        "--format=%(refname:short)%09%(upstream:short)%09%(committerdate:relative)%09%(subject)",
+        "refs/heads",
+        "refs/remotes",
+    ])
+    if branch_result.returncode != 0:
+        print(branch_result.stderr.strip() or "Failed to read branches.")
+        return None
+
+    return parse_merge_branches(branch_result.stdout, current_branch)
+
+
+def parse_merge_branches(text: str, current_branch: str) -> list[MergeBranch]:
+    branches: list[MergeBranch] = []
+    seen: set[str] = set()
+
+    for line in text.splitlines():
+        parts = line.split("\t")
+        if not parts or not parts[0].strip():
+            continue
+        padded = parts + ["", "", ""]
+        name, upstream, updated, subject = (part.strip() for part in padded[:4])
+        if name == current_branch or name.endswith("/HEAD"):
+            continue
+        if name in seen:
+            continue
+        seen.add(name)
+        branches.append(MergeBranch(name=name, upstream=upstream, updated=updated, subject=subject))
+
+    return branches
+
+
+def parse_merge_conflicts(text: str) -> list[MergeConflict]:
+    conflicts: list[MergeConflict] = []
+    seen: set[str] = set()
+
+    for line in text.splitlines():
+        if len(line) < 4:
+            continue
+        status = line[:2]
+        if not _is_unmerged_status(status):
+            continue
+        path = line[3:].strip()
+        if " -> " in path:
+            path = path.split(" -> ", 1)[1].strip()
+        if not path or path in seen:
+            continue
+        seen.add(path)
+        conflicts.append(MergeConflict(path=path, status=status))
+
+    return conflicts
+
+
+def _is_unmerged_status(status: str) -> bool:
+    return status in {"DD", "AU", "UD", "UA", "DU", "AA", "UU"}
+
+
+def _merge_conflict_context(path: str) -> str:
+    try:
+        with open(path, encoding="utf-8") as file:
+            text = file.read()
+    except UnicodeDecodeError:
+        return "Binary or non-UTF-8 file. Open it in an editor or resolve it with git."
+    except OSError as error:
+        return f"Failed to read conflict file: {error}"
+
+    return format_conflict_context(text)
+
+
+def format_conflict_context(text: str) -> str:
+    conflicts = _parse_conflict_blocks(text)
+    if not conflicts:
+        return "\n".join([
+            "No conflict markers found in the working tree file.",
+            "",
+            "Git options:",
+            "- Current: git checkout --ours -- <file>",
+            "- Incoming: git checkout --theirs -- <file>",
+            "- Both: keep both sides only when conflict markers are present",
+            "- Editor: open the file manually",
+        ])
+
+    conflict = conflicts[0]
+    lines = [
+        "Git options:",
+        "- Current: keep our side / HEAD / --ours",
+        "- Incoming: keep their side / merged branch / --theirs",
+        "- Both: keep current followed by incoming and remove markers",
+        "- Editor: open the file manually",
+        "",
+        f"Conflict 1 of {len(conflicts)}",
+        "",
+        "Current / ours:",
+        *_limit_context_lines(conflict["ours"]),
+    ]
+    if conflict["base"]:
+        lines.extend(["", "Base:", *_limit_context_lines(conflict["base"])])
+    lines.extend(["", "Incoming / theirs:", *_limit_context_lines(conflict["theirs"])])
+    if len(conflicts) > 1:
+        lines.extend(["", f"{len(conflicts) - 1} more conflict(s) in this file. Open editor for full context."])
+    return "\n".join(lines)
+
+
+def resolve_conflict_markers(text: str, choice: str) -> str | None:
+    if choice not in ("ours", "theirs", "both"):
+        return None
+
+    output_lines: list[str] = []
+    ours: list[str] = []
+    theirs: list[str] = []
+    state = "normal"
+    found = False
+
+    for line in text.splitlines(keepends=True):
+        if line.startswith("<<<<<<< "):
+            found = True
+            state = "ours"
+            ours = []
+            theirs = []
+            continue
+        if state == "ours" and line.startswith("||||||| "):
+            state = "base"
+            continue
+        if state in ("ours", "base") and line.startswith("======="):
+            state = "theirs"
+            continue
+        if state == "theirs" and line.startswith(">>>>>>> "):
+            if choice == "ours":
+                output_lines.extend(ours)
+            elif choice == "theirs":
+                output_lines.extend(theirs)
+            else:
+                output_lines.extend(ours)
+                output_lines.extend(theirs)
+            state = "normal"
+            continue
+
+        if state == "normal":
+            output_lines.append(line)
+        elif state == "ours":
+            ours.append(line)
+        elif state == "theirs":
+            theirs.append(line)
+
+    if state != "normal" or not found:
+        return None
+    return "".join(output_lines)
+
+
+def _resolve_conflict_file(path: str, choice: str) -> bool:
+    try:
+        with open(path, encoding="utf-8") as file:
+            text = file.read()
+    except UnicodeDecodeError:
+        print(f"{path} is not UTF-8 text. Open it in an editor to resolve it manually.")
+        return False
+    except OSError as error:
+        print(f"Failed to read {path}: {error}")
+        return False
+
+    resolved = resolve_conflict_markers(text, choice)
+    if resolved is None:
+        print(f"No complete conflict markers found in {path}.")
+        return False
+
+    try:
+        with open(path, "w", encoding="utf-8") as file:
+            file.write(resolved)
+    except OSError as error:
+        print(f"Failed to write {path}: {error}")
+        return False
+    return True
+
+
+def _generate_ai_merge_resolution(path: str, progress: Callable[[str], None]) -> str | None:
+    try:
+        with open(path, encoding="utf-8") as file:
+            text = file.read()
+    except UnicodeDecodeError:
+        print(f"{path} is not UTF-8 text. Open it in an editor to resolve it manually.")
+        return None
+    except OSError as error:
+        print(f"Failed to read {path}: {error}")
+        return None
+
+    if "<<<<<<< " not in text or "=======" not in text or ">>>>>>> " not in text:
+        print(f"No complete conflict markers found in {path}.")
+        return None
+
+    resolved = generate_merge_resolution(path, text, progress=progress)
+    if resolved is None:
+        return None
+    if _has_conflict_markers(resolved):
+        print("AI returned content that still contains conflict markers. Open the file in an editor to resolve it manually.")
+        return None
+    return resolved
+
+
+def _write_ai_merge_resolution(path: str, resolved: str) -> bool:
+    if _has_conflict_markers(resolved):
+        print("AI proposal still contains conflict markers. Edit or reject it before applying.")
+        return False
+    try:
+        with open(path, "w", encoding="utf-8") as file:
+            file.write(resolved)
+    except OSError as error:
+        print(f"Failed to write {path}: {error}")
+        return False
+    return True
+
+
+def _has_conflict_markers(text: str) -> bool:
+    return "<<<<<<< " in text or "\n=======\n" in text or ">>>>>>> " in text
+
+
+def _parse_conflict_blocks(text: str) -> list[dict[str, list[str]]]:
+    conflicts: list[dict[str, list[str]]] = []
+    ours: list[str] = []
+    base: list[str] = []
+    theirs: list[str] = []
+    state = "normal"
+
+    for line in text.splitlines():
+        if line.startswith("<<<<<<< "):
+            state = "ours"
+            ours = []
+            base = []
+            theirs = []
+            continue
+        if state == "ours" and line.startswith("||||||| "):
+            state = "base"
+            continue
+        if state in ("ours", "base") and line.startswith("======="):
+            state = "theirs"
+            continue
+        if state == "theirs" and line.startswith(">>>>>>> "):
+            conflicts.append({"ours": ours, "base": base, "theirs": theirs})
+            state = "normal"
+            continue
+
+        if state == "ours":
+            ours.append(line)
+        elif state == "base":
+            base.append(line)
+        elif state == "theirs":
+            theirs.append(line)
+
+    return conflicts
+
+
+def _limit_context_lines(lines: list[str], limit: int = 12) -> list[str]:
+    if not lines:
+        return ["  <empty>"]
+    clipped = lines[:limit]
+    output = [f"  {line}" for line in clipped]
+    if len(lines) > limit:
+        output.append(f"  ... {len(lines) - limit} more line(s)")
+    return output
+
+
+def _merge_preview(branch: str) -> str:
+    result = output(["git", "log", "--oneline", "--decorate=short", "-n", "12", f"HEAD..{branch}"])
+    if result.returncode != 0:
+        return result.stderr.strip() or "Failed to read branch preview."
+    return result.stdout.strip()
 
 
 def push(git_args: list[str]):

@@ -10,13 +10,29 @@ from openai_commit import (
     _sample_changed_lines,
     build_change_summary,
     build_commit_prompt,
+    clean_merge_resolution,
     generate_commit_message,
+    generate_merge_resolution,
     prepare_commit_diff,
     split_diff_by_file,
 )
 
 
 class PrepareCommitDiffTests(unittest.TestCase):
+    def test_clean_merge_resolution_strips_code_fence(self):
+        text = "```python\nprint('resolved')\n```\n"
+
+        self.assertEqual("print('resolved')\n", clean_merge_resolution(text))
+
+    def test_generate_merge_resolution_requests_plain_file_content(self):
+        with patch("openai_commit.request_openai_text", return_value="resolved\n") as request:
+            resolved = generate_merge_resolution("file.py", "<<<<<<< HEAD\nours\n=======\ntheirs\n>>>>>>> branch\n")
+
+        self.assertEqual("resolved\n", resolved)
+        prompt = request.call_args.args[0]
+        self.assertIn("Return only the complete resolved file content.", prompt)
+        self.assertIn("file.py", prompt)
+
     def test_preserves_later_code_file_when_early_svg_is_large(self):
         svg_diff = (
             "diff --git a/assets/icon.svg b/assets/icon.svg\n"

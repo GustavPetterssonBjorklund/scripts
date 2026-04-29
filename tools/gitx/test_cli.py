@@ -33,6 +33,14 @@ class CliTests(unittest.TestCase):
         self.assertEqual(0, result)
         run.assert_called_once_with(["git", "status"])
 
+    def test_merge_command_uses_gitx_merge_manager(self):
+        with patch.object(sys, "argv", ["gitx", "merge"]):
+            with patch("cli.merge", return_value=0) as merge:
+                result = main()
+
+        self.assertEqual(0, result)
+        merge.assert_called_once_with([])
+
 
 if __name__ == "__main__":
     unittest.main()

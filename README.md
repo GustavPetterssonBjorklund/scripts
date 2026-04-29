@@ -48,6 +48,19 @@ nix develop
 `gitx c <message>` commits with `-m "<message>"`. When commit arguments include git flags, gitx passes them through to `git commit`, so commands such as `gitx c --amend` and `gitx c --amend --no-edit` keep normal git behavior.
 Commands without a gitx alias pass through to git directly, so `gitx tag`, `gitx branch`, `gitx rebase`, and other git commands work as expected.
 
+### gitx merge manager
+
+`gitx merge` opens an interactive terminal UI for choosing a local or remote branch to merge into the current branch.
+The manager shows the current branch, working tree state, recent branch metadata, and a preview of commits that would be brought in.
+Use the action row to run a regular merge, `--no-ff`, or `--squash`.
+If a merge is already in progress, the same command shows conflicted files, labels the current/ours and incoming/theirs sides of the selected conflict, and exposes the common resolution options directly: keep current, keep incoming, keep both, ask AI to propose a resolved version, open `$EDITOR`, stage, continue, or abort.
+AI merge proposals stay inside the TUI for review; approve applies and stages the proposal, edit opens it in `$EDITOR` before approval, and reject returns to the conflict resolver without changing the file.
+The AI review screen shows a color-coded diff between the original conflicted file and the AI proposal, with `n` and `p` jumping between changed hunks.
+The conflict context is color-coded in the terminal UI so current, incoming, base, both, and editor-oriented options are easy to scan.
+Long conflict context is wrapped to at most 80 columns and can be scrolled with `[` and `]`.
+Resolver actions show compact shortcut labels such as `o:Ours`, `t:Theirs`, and `i:AI`.
+Passing merge arguments keeps normal git behavior, so `gitx merge --abort` and `gitx merge feature` pass through to `git merge`.
+
 ### gitx AI commit messages
 
 `gitx c --ai` generates a commit message from staged changes with the OpenAI Responses API, opens a small terminal approval screen, and commits only after approval.

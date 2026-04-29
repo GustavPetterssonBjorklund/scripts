@@ -75,6 +75,55 @@ def generate_commit_message(
     )
 
 
+def generate_merge_resolution(
+    path: str,
+    conflicted_content: str,
+    progress: ProgressCallback | None = None,
+) -> str | None:
+    if progress:
+        progress(f"Building AI merge prompt for {path}...")
+
+    prompt = build_merge_resolution_prompt(path, conflicted_content)
+
+    if progress:
+        progress("Waiting for OpenAI to resolve the selected conflict...")
+    text = request_openai_text(prompt, max_output_tokens=4000)
+    if text is None:
+        return None
+
+    if progress:
+        progress("Received AI merge resolution.")
+    return clean_merge_resolution(text)
+
+
+def build_merge_resolution_prompt(path: str, conflicted_content: str) -> str:
+    return (
+        "Resolve the git merge conflicts in the file below.\n"
+        "Return only the complete resolved file content.\n"
+        "Do not include markdown, code fences, explanations, labels, or diff hunks.\n"
+        "Remove all conflict markers.\n"
+        "Preserve unrelated file content exactly where possible.\n"
+        "When both sides contain useful changes, combine them coherently instead of blindly choosing one side.\n"
+        "If the file contains multiple conflict blocks, resolve all of them.\n"
+        "\n"
+        f"File path:\n{path}\n"
+        "\n"
+        f"Conflicted file content:\n{conflicted_content}"
+    )
+
+
+def clean_merge_resolution(text: str) -> str:
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        lines = cleaned.splitlines()
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].startswith("```"):
+            lines = lines[:-1]
+        cleaned = "\n".join(lines)
+    return cleaned.rstrip() + "\n"
+
+
 def build_commit_prompt(diff: str, truncated: bool) -> str:
     diff_files = split_diff_by_file(diff)
     summary = build_change_summary(diff_files, truncated)
