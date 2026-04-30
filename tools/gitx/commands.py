@@ -1,5 +1,6 @@
 import sys
 from collections.abc import Callable
+import re
 
 from config import ensure_project_rules_file, get_project_rules, projects_config_path
 from git_runner import output, run
@@ -551,8 +552,7 @@ def push(git_args: list[str]):
 
 
 def _tag_context() -> dict[str, str] | None:
-    latest_tag_result = output(["git", "describe", "--tags", "--abbrev=0"])
-    latest_tag = latest_tag_result.stdout.strip() if latest_tag_result.returncode == 0 else ""
+    latest_tag = _latest_version_tag()
 
     tags_result = output([
         "git",
@@ -585,6 +585,28 @@ def _tag_context() -> dict[str, str] | None:
         "previous_info": previous_info,
         "recent_commits": recent_commits,
     }
+
+
+def _latest_version_tag() -> str:
+    tags_result = output(["git", "tag", "--list"])
+    if tags_result.returncode == 0:
+        version_tags = [
+            (version, tag)
+            for tag in tags_result.stdout.splitlines()
+            if (version := _parse_version_tag(tag)) is not None
+        ]
+        if version_tags:
+            return max(version_tags, key=lambda item: item[0])[1]
+
+    latest_tag_result = output(["git", "describe", "--tags", "--abbrev=0"])
+    return latest_tag_result.stdout.strip() if latest_tag_result.returncode == 0 else ""
+
+
+def _parse_version_tag(tag: str) -> tuple[int, int, int] | None:
+    match = re.match(r"^[^\d]*(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$", tag.strip())
+    if not match:
+        return None
+    return int(match.group(1)), int(match.group(2)), int(match.group(3))
 
 
 def clone(git_args: list[str]):

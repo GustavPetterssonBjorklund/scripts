@@ -3,11 +3,14 @@ import sys
 import unittest
 from contextlib import redirect_stdout
 from io import StringIO
+from types import SimpleNamespace
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from commands import (
+    _latest_version_tag,
+    _parse_version_tag,
     commit,
     format_conflict_context,
     merge,
@@ -73,6 +76,39 @@ class TagCommandTests(unittest.TestCase):
 
         self.assertEqual(0, result)
         run.assert_called_once_with(["git", "tag", "-a", "v1.3.0", "-m", "Release v1.3.0"])
+
+    def test_latest_version_tag_uses_numeric_semver_order(self):
+        tags = "\n".join([
+            "v.0.1.6",
+            "v0.0.4",
+            "v0.1",
+            "v0.1.67",
+            "v0.1.9",
+            "v0.2.0",
+            "v0.9.1",
+        ])
+
+        with patch("commands.output", return_value=SimpleNamespace(returncode=0, stdout=tags)):
+            self.assertEqual("v0.9.1", _latest_version_tag())
+
+    def test_latest_version_tag_falls_back_to_git_describe_without_version_tags(self):
+        with patch(
+            "commands.output",
+            side_effect=[
+                SimpleNamespace(returncode=0, stdout="release\nlegacy\n"),
+                SimpleNamespace(returncode=0, stdout="legacy\n"),
+            ],
+        ) as output:
+            self.assertEqual("legacy", _latest_version_tag())
+
+        self.assertEqual([
+            (["git", "tag", "--list"],),
+            (["git", "describe", "--tags", "--abbrev=0"],),
+        ], [call.args for call in output.call_args_list])
+
+    def test_parse_version_tag_rejects_missing_patch_component(self):
+        self.assertIsNone(_parse_version_tag("v0.1"))
+        self.assertEqual((0, 7, 1), _parse_version_tag("v0.7.01"))
 
 
 class MergeCommandTests(unittest.TestCase):
