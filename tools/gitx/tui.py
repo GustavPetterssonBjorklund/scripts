@@ -236,12 +236,13 @@ def choose_merge_action(
 def choose_checkout_branch(
     branches: Sequence[CheckoutBranch],
     current_branch: str,
+    preview_for_branch: Callable[[str], str] | None = None,
 ) -> CheckoutAction | None:
     if not sys.stdin.isatty() or not sys.stdout.isatty():
         return prompt_choose_checkout_branch(branches, current_branch)
 
     try:
-        return curses.wrapper(lambda stdscr: _checkout_screen(stdscr, branches, current_branch))
+        return curses.wrapper(lambda stdscr: _checkout_screen(stdscr, branches, current_branch, preview_for_branch))
     except curses.error:
         return prompt_choose_checkout_branch(branches, current_branch)
 
@@ -740,6 +741,7 @@ def _checkout_screen(
     stdscr: CursesWindow,
     branches: Sequence[CheckoutBranch],
     current_branch: str,
+    preview_for_branch: Callable[[str], str] | None = None,
 ) -> CheckoutAction | None:
     curses.curs_set(1)
     stdscr.keypad(True)
@@ -748,13 +750,34 @@ def _checkout_screen(
     selected_mode = 0
     selected_branch = 0
     query = ""
+    preview_branch = ""
+    preview = ""
 
     while True:
         visible = _filter_checkout_branches(branches, modes[selected_mode], query)
         if selected_branch >= len(visible):
             selected_branch = max(0, len(visible) - 1)
 
-        _draw_checkout_screen(stdscr, branches, visible, selected_branch, modes, selected_mode, query, current_branch)
+        if visible and preview_for_branch:
+            selected_name = visible[selected_branch].name
+            if selected_name != preview_branch:
+                preview_branch = selected_name
+                preview = preview_for_branch(selected_name)
+        elif not visible:
+            preview_branch = ""
+            preview = ""
+
+        _draw_checkout_screen(
+            stdscr,
+            branches,
+            visible,
+            selected_branch,
+            modes,
+            selected_mode,
+            query,
+            current_branch,
+            preview,
+        )
         key = stdscr.getch()
 
         if key in (curses.KEY_UP, ord("k")):
@@ -1143,6 +1166,7 @@ def _draw_checkout_screen(
     selected_mode: int,
     query: str,
     current_branch: str,
+    preview: str = "",
 ) -> None:
     stdscr.erase()
     _init_colors()
@@ -1166,8 +1190,16 @@ def _draw_checkout_screen(
     _add_line(stdscr, 7, 2, search_label[:usable_width])
 
     list_top = 9
-    list_bottom = height - 4
-    if height >= 14 and width >= 40:
+    button_y = height - 4
+    list_bottom = button_y
+    preview_top = button_y
+    preview_bottom = button_y
+    if height >= 18 and width >= 40:
+        list_bottom = min(max(list_top + 3, height // 2), max(list_top + 3, button_y - 7))
+        preview_top = list_bottom + 2
+        preview_bottom = button_y - 2
+
+    if height >= 14 and width >= 40 and list_bottom > list_top + 1:
         _draw_box(stdscr, list_top, 1, list_bottom, width - 2)
         title = " Local branches " if mode == "local" else f" Remote branches: {mode} "
         _add_line(stdscr, list_top, 3, title[:usable_width], curses.A_BOLD)
@@ -1186,6 +1218,19 @@ def _draw_checkout_screen(
             label = f"{marker} {current_marker}{branch.display_name}" + (f" - {detail}" if detail else "")
             attr = curses.A_REVERSE if index == selected_branch else curses.A_NORMAL
             _add_line(stdscr, row, 3, label[:usable_width], attr)
+
+    if height >= 18 and width >= 40 and preview_bottom > preview_top + 2:
+        _draw_box(stdscr, preview_top, 1, preview_bottom, width - 2)
+        if visible:
+            selected_name = visible[selected_branch].name
+            _add_line(stdscr, preview_top, 3, f" Branch stats: {current_branch}...{selected_name} ")
+            preview_text = preview or "No branch statistics available."
+        else:
+            _add_line(stdscr, preview_top, 3, " Branch stats ")
+            preview_text = "Select a branch to see comparison statistics."
+        preview_lines = _wrap_checkout_preview(preview_text, usable_width)
+        for row, (line, style) in enumerate(preview_lines[:preview_bottom - preview_top - 1], start=preview_top + 1):
+            _add_line(stdscr, row, 3, line[:usable_width], _semantic_attr(style))
 
     try:
         stdscr.move(7, min(width - 2, 10 + len(query)))
@@ -1651,6 +1696,48 @@ def _wrap_merge_context(message: str, width: int) -> list[tuple[str, str | None]
     return lines or [(message, None)]
 
 
+def _wrap_checkout_preview(message: str, width: int) -> list[tuple[str, str | None]]:
+    lines: list[tuple[str, str | None]] = []
+    for raw_line in message.splitlines():
+        style = _checkout_preview_style(raw_line)
+        if not raw_line.strip():
+            lines.append(("", None))
+            continue
+        for line in textwrap.wrap(
+            raw_line,
+            width=width,
+            subsequent_indent="  ",
+            replace_whitespace=False,
+            drop_whitespace=False,
+        ) or [""]:
+            lines.append((line, style))
+    return lines or [(message, None)]
+
+
+def _checkout_preview_style(line: str) -> str | None:
+    stripped = line.strip()
+    lowered = stripped.lower()
+    if not stripped:
+        return None
+    if lowered.startswith(("comparison:", "changed files:", "recent commits:")):
+        return "heading"
+    if lowered.startswith("ahead/behind:"):
+        return "branch-counts"
+    if " insertion" in lowered and " deletion" in lowered:
+        return "both"
+    if " insertion" in lowered:
+        return "added"
+    if " deletion" in lowered:
+        return "removed"
+    if "|" in stripped and re.search(r"\+\+|--", stripped):
+        return "both"
+    if lowered.startswith("no "):
+        return "muted"
+    if re.match(r"^[0-9a-f]{6,}\b", stripped):
+        return "commit"
+    return None
+
+
 def _wrap_code_context(message: str, width: int) -> list[tuple[str, str | None]]:
     lines: list[tuple[str, str | None]] = []
     for raw_line in message.splitlines():
@@ -1846,6 +1933,10 @@ def _semantic_attr(style: str | None) -> int:
         return curses.color_pair(4)
     if style == "hunk":
         return curses.color_pair(6) | curses.A_BOLD
+    if style == "branch-counts":
+        return curses.color_pair(3) | curses.A_BOLD
+    if style == "commit":
+        return curses.color_pair(5)
     return curses.A_NORMAL
 
 

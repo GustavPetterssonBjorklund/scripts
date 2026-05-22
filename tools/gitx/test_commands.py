@@ -9,6 +9,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from commands import (
+    _checkout_preview,
     _latest_version_tag,
     _parse_version_tag,
     checkout,
@@ -380,11 +381,12 @@ class CheckoutCommandTests(unittest.TestCase):
         context = {"current_branch": "main", "branches": [branch]}
 
         with patch("commands._checkout_context", return_value=context):
-            with patch("commands.choose_checkout_branch", return_value=CheckoutAction(branch)):
+            with patch("commands.choose_checkout_branch", return_value=CheckoutAction(branch)) as choose_checkout_branch:
                 with patch("commands.run", return_value=0) as run:
                     result = checkout([])
 
         self.assertEqual(0, result)
+        self.assertIn("preview_for_branch", choose_checkout_branch.call_args.kwargs)
         run.assert_called_once_with(["git", "checkout", "feature"])
 
     def test_interactive_checkout_tracks_selected_remote_branch(self):
@@ -417,6 +419,62 @@ class CheckoutCommandTests(unittest.TestCase):
         self.assertEqual(["main", "feature", "feature", "topic"], [branch.display_name for branch in branches])
         self.assertEqual(["", "", "origin", "upstream"], [branch.remote for branch in branches])
         self.assertEqual([True, False, False, False], [branch.is_current for branch in branches])
+
+    def test_checkout_preview_shows_counts_stats_and_commits(self):
+        outputs = [
+            SimpleNamespace(returncode=0, stdout="2\t3\n", stderr=""),
+            SimpleNamespace(returncode=0, stdout=" 4 files changed, 20 insertions(+), 5 deletions(-)\n", stderr=""),
+            SimpleNamespace(returncode=0, stdout=" a.py | 10 +++++-----\n b.py | 15 +++++++++++++++\n", stderr=""),
+            SimpleNamespace(returncode=0, stdout="abc1234 add thing\n", stderr=""),
+        ]
+
+        with patch("commands.output", side_effect=outputs) as output:
+            preview = _checkout_preview("main", "feature")
+
+        self.assertIn("Comparison: main...feature", preview)
+        self.assertIn("feature is 3 ahead, 2 behind main", preview)
+        self.assertIn("4 files changed", preview)
+        self.assertIn("Changed files:", preview)
+        self.assertIn("a.py | 10", preview)
+        self.assertIn("Recent commits:", preview)
+        self.assertIn("abc1234 add thing", preview)
+        self.assertEqual([
+            (["git", "rev-list", "--left-right", "--count", "main...feature"],),
+            (["git", "diff", "--shortstat", "main...feature"],),
+            (["git", "diff", "--stat", "--compact-summary", "main...feature"],),
+            (["git", "log", "--oneline", "--decorate=short", "-n", "8", "main..feature"],),
+        ], [call.args for call in output.call_args_list])
+
+    def test_checkout_preview_handles_empty_diff_and_commits(self):
+        outputs = [
+            SimpleNamespace(returncode=0, stdout="0\t0\n", stderr=""),
+            SimpleNamespace(returncode=0, stdout="", stderr=""),
+            SimpleNamespace(returncode=0, stdout="", stderr=""),
+            SimpleNamespace(returncode=0, stdout="", stderr=""),
+        ]
+
+        with patch("commands.output", side_effect=outputs):
+            preview = _checkout_preview("main", "main")
+
+        self.assertIn("main is 0 ahead, 0 behind main", preview)
+        self.assertIn("No file changes from the shared merge base.", preview)
+        self.assertIn("No commits unique to this branch.", preview)
+
+    def test_checkout_preview_uses_git_error_fallback(self):
+        outputs = [
+            SimpleNamespace(returncode=1, stdout="", stderr="bad revision\n"),
+            SimpleNamespace(returncode=1, stdout="", stderr="diff failed\n"),
+            SimpleNamespace(returncode=1, stdout="", stderr="stat failed\n"),
+            SimpleNamespace(returncode=1, stdout="", stderr="log failed\n"),
+        ]
+
+        with patch("commands.output", side_effect=outputs):
+            preview = _checkout_preview("main", "missing")
+
+        self.assertIn("bad revision", preview)
+        self.assertIn("diff failed", preview)
+        self.assertIn("stat failed", preview)
+        self.assertIn("log failed", preview)
 
 
 if __name__ == "__main__":

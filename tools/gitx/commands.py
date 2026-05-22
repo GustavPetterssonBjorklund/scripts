@@ -258,6 +258,7 @@ def checkout(git_args: list[str]):
     action = choose_checkout_branch(
         branches=context["branches"],
         current_branch=context["current_branch"],
+        preview_for_branch=lambda branch: _checkout_preview(context["current_branch"], branch),
     )
     if action is None:
         print("Checkout cancelled.")
@@ -351,6 +352,58 @@ def parse_checkout_branches(text: str, current_branch: str) -> list[CheckoutBran
         branches.append(branch)
 
     return branches
+
+
+def _checkout_preview(current_branch: str, branch: str) -> str:
+    comparison = f"{current_branch}...{branch}"
+    lines = [f"Comparison: {comparison}", ""]
+
+    counts = _checkout_ahead_behind(current_branch, branch)
+    if counts:
+        lines.append(counts)
+
+    shortstat = _git_output(["git", "diff", "--shortstat", comparison], "Failed to read diff summary.")
+    if shortstat:
+        lines.append(shortstat)
+    elif counts:
+        lines.append("No file changes from the shared merge base.")
+
+    diffstat = _git_output(
+        ["git", "diff", "--stat", "--compact-summary", comparison],
+        "Failed to read diffstat.",
+    )
+    if diffstat:
+        lines.extend(["", "Changed files:", diffstat])
+
+    commits = _git_output(
+        ["git", "log", "--oneline", "--decorate=short", "-n", "8", f"{current_branch}..{branch}"],
+        "Failed to read unique commits.",
+    )
+    if commits:
+        lines.extend(["", "Recent commits:", commits])
+    else:
+        lines.extend(["", "Recent commits:", "No commits unique to this branch."])
+
+    return "\n".join(lines).strip()
+
+
+def _checkout_ahead_behind(current_branch: str, branch: str) -> str:
+    result = output(["git", "rev-list", "--left-right", "--count", f"{current_branch}...{branch}"])
+    if result.returncode != 0:
+        return result.stderr.strip() or "Failed to read ahead/behind counts."
+
+    parts = result.stdout.split()
+    if len(parts) != 2:
+        return ""
+    behind, ahead = parts
+    return f"Ahead/behind: {branch} is {ahead} ahead, {behind} behind {current_branch}."
+
+
+def _git_output(cmd: list[str], fallback: str) -> str:
+    result = output(cmd)
+    if result.returncode != 0:
+        return result.stderr.strip() or fallback
+    return result.stdout.strip()
 
 
 def _merge_context() -> dict[str, object] | None:

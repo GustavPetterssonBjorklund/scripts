@@ -17,6 +17,7 @@ from tui import (
     _previous_hunk_scroll,
     _review_visible_rows,
     _wrap_ai_merge_diff,
+    _wrap_checkout_preview,
     _wrap_merge_context,
 )
 
@@ -109,6 +110,30 @@ class TuiTagTests(unittest.TestCase):
         filtered = _filter_checkout_branches(branches, "origin", "auth")
 
         self.assertEqual(["origin/fix-login"], [branch.name for branch in filtered])
+
+    def test_wrap_checkout_preview_marks_stat_lines(self):
+        lines = _wrap_checkout_preview(
+            "\n".join([
+                "Comparison: main...feature",
+                "Ahead/behind: feature is 3 ahead, 1 behind main.",
+                " 4 files changed, 20 insertions(+), 5 deletions(-)",
+                "Changed files:",
+                " a.py | 10 +++++-----",
+                "Recent commits:",
+                "abc1234 add thing",
+                "No commits unique to this branch.",
+            ]),
+            100,
+        )
+
+        self.assertIn(("Comparison: main...feature", "heading"), lines)
+        self.assertIn(("Ahead/behind: feature is 3 ahead, 1 behind main.", "branch-counts"), lines)
+        self.assertIn((" 4 files changed, 20 insertions(+), 5 deletions(-)", "both"), lines)
+        self.assertIn(("Changed files:", "heading"), lines)
+        self.assertIn((" a.py | 10 +++++-----", "both"), lines)
+        self.assertIn(("Recent commits:", "heading"), lines)
+        self.assertIn(("abc1234 add thing", "commit"), lines)
+        self.assertIn(("No commits unique to this branch.", "muted"), lines)
 
 
 if __name__ == "__main__":

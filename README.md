@@ -54,6 +54,7 @@ Commands without a gitx alias pass through to git directly, so `gitx tag`, `gitx
 
 `gitx ch` or `g ch` opens an interactive terminal UI for checking out a branch.
 The picker has a search bar and can switch between local branches and each remote, such as `origin` or `upstream`.
+The selected branch shows a comparison preview against the current branch with ahead/behind counts, changed-file stats, and recent unique commits.
 Selecting a local branch runs `git checkout <branch>`.
 Selecting a remote branch runs `git checkout --track <remote>/<branch>` so the local branch is created with upstream tracking.
 Passing checkout arguments keeps normal git behavior, so `gitx ch feature`, `gitx ch -`, and other checkout forms pass through to `git checkout`.
