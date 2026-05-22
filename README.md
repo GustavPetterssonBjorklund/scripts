@@ -45,8 +45,18 @@ nix develop
 - `ovpntmp`: choose and run a temporary OpenVPN config from Downloads
 - `redact`: inspect piped stdin, score likely sensitive values, and interactively replace them with `<redacted>`
 
+The installed `gitx` package also provides `g` as a shorter binary alias.
+
 `gitx c <message>` commits with `-m "<message>"`. When commit arguments include git flags, gitx passes them through to `git commit`, so commands such as `gitx c --amend` and `gitx c --amend --no-edit` keep normal git behavior.
 Commands without a gitx alias pass through to git directly, so `gitx tag`, `gitx branch`, `gitx rebase`, and other git commands work as expected.
+
+### gitx checkout picker
+
+`gitx ch` or `g ch` opens an interactive terminal UI for checking out a branch.
+The picker has a search bar and can switch between local branches and each remote, such as `origin` or `upstream`.
+Selecting a local branch runs `git checkout <branch>`.
+Selecting a remote branch runs `git checkout --track <remote>/<branch>` so the local branch is created with upstream tracking.
+Passing checkout arguments keeps normal git behavior, so `gitx ch feature`, `gitx ch -`, and other checkout forms pass through to `git checkout`.
 
 ### gitx merge manager
 

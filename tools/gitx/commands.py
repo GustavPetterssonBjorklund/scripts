@@ -11,8 +11,10 @@ from tui import (
     approve_generated_commit_message,
     approve_generated_tag,
     approve_validation_findings,
+    choose_checkout_branch,
     choose_merge_action,
     edit_file,
+    CheckoutBranch,
     MergeBranch,
     MergeConflict,
     run_validation_with_loading,
@@ -243,6 +245,112 @@ def merge(git_args: list[str]):
             command.append("--squash")
         command.append(action.branch)
         return run(command)
+
+
+def checkout(git_args: list[str]):
+    if git_args:
+        return run(["git", "checkout", *git_args])
+
+    context = _checkout_context()
+    if context is None:
+        return 1
+
+    action = choose_checkout_branch(
+        branches=context["branches"],
+        current_branch=context["current_branch"],
+    )
+    if action is None:
+        print("Checkout cancelled.")
+        return 1
+
+    branch = action.branch
+    if branch.kind == "remote":
+        return run(["git", "checkout", "--track", branch.name])
+    return run(["git", "checkout", branch.name])
+
+
+def _checkout_context() -> dict[str, object] | None:
+    if _repo_root() is None:
+        return None
+
+    current_result = output(["git", "symbolic-ref", "--quiet", "--short", "HEAD"])
+    if current_result.returncode != 0:
+        current_result = output(["git", "rev-parse", "--short", "HEAD"])
+    if current_result.returncode != 0:
+        print(current_result.stderr.strip() or "Failed to read current branch.")
+        return None
+    current_branch = current_result.stdout.strip()
+
+    branches = _checkout_branches(current_branch)
+    if branches is None:
+        return None
+
+    return {"current_branch": current_branch, "branches": branches}
+
+
+def _checkout_branches(current_branch: str) -> list[CheckoutBranch] | None:
+    branch_result = output([
+        "git",
+        "for-each-ref",
+        "--sort=-committerdate",
+        "--format=%(refname)%09%(refname:short)%09%(upstream:short)%09%(committerdate:relative)%09%(subject)",
+        "refs/heads",
+        "refs/remotes",
+    ])
+    if branch_result.returncode != 0:
+        print(branch_result.stderr.strip() or "Failed to read branches.")
+        return None
+
+    return parse_checkout_branches(branch_result.stdout, current_branch)
+
+
+def parse_checkout_branches(text: str, current_branch: str) -> list[CheckoutBranch]:
+    branches: list[CheckoutBranch] = []
+    seen: set[tuple[str, str]] = set()
+
+    for line in text.splitlines():
+        parts = line.split("\t")
+        if len(parts) < 2:
+            continue
+        padded = parts + ["", "", ""]
+        refname, short_name, upstream, updated, subject = (part.strip() for part in padded[:5])
+        if not short_name or short_name.endswith("/HEAD"):
+            continue
+
+        if refname.startswith("refs/heads/"):
+            branch = CheckoutBranch(
+                name=short_name,
+                display_name=short_name,
+                kind="local",
+                remote="",
+                upstream=upstream,
+                updated=updated,
+                subject=subject,
+                is_current=short_name == current_branch,
+            )
+        elif refname.startswith("refs/remotes/"):
+            if refname.endswith("/HEAD") or "/" not in short_name:
+                continue
+            remote, display_name = short_name.split("/", 1)
+            branch = CheckoutBranch(
+                name=short_name,
+                display_name=display_name,
+                kind="remote",
+                remote=remote,
+                upstream="",
+                updated=updated,
+                subject=subject,
+            )
+        else:
+            continue
+
+        key = (branch.kind, branch.name)
+        if key in seen:
+            continue
+        seen.add(key)
+        branches.append(branch)
+
+    return branches
 
 
 def _merge_context() -> dict[str, object] | None:

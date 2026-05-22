@@ -93,6 +93,23 @@ class MergeConflict:
 
 
 @dataclass
+class CheckoutBranch:
+    name: str
+    display_name: str
+    kind: str
+    remote: str
+    upstream: str
+    updated: str
+    subject: str
+    is_current: bool = False
+
+
+@dataclass
+class CheckoutAction:
+    branch: CheckoutBranch
+
+
+@dataclass
 class MergeAction:
     action: str
     branch: str = ""
@@ -214,6 +231,54 @@ def choose_merge_action(
         )
     except curses.error:
         return prompt_choose_merge_action(branches, current_branch, status, merge_in_progress, conflicts)
+
+
+def choose_checkout_branch(
+    branches: Sequence[CheckoutBranch],
+    current_branch: str,
+) -> CheckoutAction | None:
+    if not sys.stdin.isatty() or not sys.stdout.isatty():
+        return prompt_choose_checkout_branch(branches, current_branch)
+
+    try:
+        return curses.wrapper(lambda stdscr: _checkout_screen(stdscr, branches, current_branch))
+    except curses.error:
+        return prompt_choose_checkout_branch(branches, current_branch)
+
+
+def prompt_choose_checkout_branch(
+    branches: Sequence[CheckoutBranch],
+    current_branch: str,
+) -> CheckoutAction | None:
+    if not branches:
+        print("No local or remote branches available to checkout.")
+        return None
+
+    print(f"\nCurrent branch: {current_branch}")
+    print("\nBranches:")
+    for index, branch in enumerate(branches, start=1):
+        scope = "local" if branch.kind == "local" else branch.remote
+        detail = branch.subject or branch.updated
+        marker = "* " if branch.is_current else ""
+        print(f"  {index}. [{scope}] {marker}{branch.display_name}" + (f" - {detail}" if detail else ""))
+
+    selected = input("\nBranch number or name to checkout? ").strip()
+    if not selected:
+        return None
+
+    if selected.isdigit():
+        index = int(selected) - 1
+        if index < 0 or index >= len(branches):
+            print("Invalid branch selection.")
+            return None
+        return CheckoutAction(branches[index])
+
+    for branch in branches:
+        if selected in (branch.name, branch.display_name):
+            return CheckoutAction(branch)
+
+    print("Invalid branch selection.")
+    return None
 
 
 def prompt_choose_merge_action(
@@ -671,6 +736,86 @@ def _merge_manager_screen(
             return MergeAction("merge", branch=branches[selected_branch].name, mode=mode)
 
 
+def _checkout_screen(
+    stdscr: CursesWindow,
+    branches: Sequence[CheckoutBranch],
+    current_branch: str,
+) -> CheckoutAction | None:
+    curses.curs_set(1)
+    stdscr.keypad(True)
+
+    modes = _checkout_modes(branches)
+    selected_mode = 0
+    selected_branch = 0
+    query = ""
+
+    while True:
+        visible = _filter_checkout_branches(branches, modes[selected_mode], query)
+        if selected_branch >= len(visible):
+            selected_branch = max(0, len(visible) - 1)
+
+        _draw_checkout_screen(stdscr, branches, visible, selected_branch, modes, selected_mode, query, current_branch)
+        key = stdscr.getch()
+
+        if key in (curses.KEY_UP, ord("k")):
+            if visible:
+                selected_branch = (selected_branch - 1) % len(visible)
+        elif key in (curses.KEY_DOWN, ord("j")):
+            if visible:
+                selected_branch = (selected_branch + 1) % len(visible)
+        elif key in (9, curses.KEY_RIGHT):
+            selected_mode = (selected_mode + 1) % len(modes)
+            selected_branch = 0
+        elif key == curses.KEY_LEFT:
+            selected_mode = (selected_mode - 1) % len(modes)
+            selected_branch = 0
+        elif key in (curses.KEY_BACKSPACE, 127, 8):
+            query = query[:-1]
+            selected_branch = 0
+        elif key == 27 or (key in (ord("q"), ord("Q")) and not query):
+            return None
+        elif key in (curses.KEY_ENTER, 10, 13):
+            if visible:
+                return CheckoutAction(visible[selected_branch])
+        elif 32 <= key <= 126:
+            query += chr(key)
+            selected_branch = 0
+
+
+def _checkout_modes(branches: Sequence[CheckoutBranch]) -> list[str]:
+    remotes = sorted({branch.remote for branch in branches if branch.kind == "remote" and branch.remote})
+    return ["local", *remotes]
+
+
+def _filter_checkout_branches(
+    branches: Sequence[CheckoutBranch],
+    mode: str,
+    query: str,
+) -> list[CheckoutBranch]:
+    words = [word.lower() for word in query.split()]
+    visible = [
+        branch for branch in branches
+        if (branch.kind == "local" if mode == "local" else branch.kind == "remote" and branch.remote == mode)
+    ]
+    if not words:
+        return visible
+
+    return [
+        branch for branch in visible
+        if all(word in _checkout_branch_search_text(branch) for word in words)
+    ]
+
+
+def _checkout_branch_search_text(branch: CheckoutBranch) -> str:
+    return " ".join([
+        branch.name,
+        branch.display_name,
+        branch.remote,
+        branch.upstream,
+        branch.subject,
+    ]).lower()
+
+
 def _merge_in_progress_screen(
     stdscr: CursesWindow,
     current_branch: str,
@@ -986,6 +1131,67 @@ def _draw_merge_manager(
         x += len(label) + 2
 
     _add_line(stdscr, height - 2, 2, "Up/down: branch  Enter: select  m: merge  f: no-ff  s: squash  q/Esc: cancel")
+    stdscr.refresh()
+
+
+def _draw_checkout_screen(
+    stdscr: CursesWindow,
+    branches: Sequence[CheckoutBranch],
+    visible: Sequence[CheckoutBranch],
+    selected_branch: int,
+    modes: Sequence[str],
+    selected_mode: int,
+    query: str,
+    current_branch: str,
+) -> None:
+    stdscr.erase()
+    _init_colors()
+    height, width = stdscr.getmaxyx()
+    usable_width = max(20, width - 4)
+    mode = modes[selected_mode]
+
+    _add_line(stdscr, 1, 2, "Checkout branch", curses.A_BOLD)
+    _add_line(stdscr, 3, 2, f"Current branch: {current_branch}")
+
+    mode_labels = [("Local" if item == "local" else item) for item in modes]
+    x = 2
+    for index, label in enumerate(mode_labels):
+        text = f" {label} "
+        if x + len(text) >= width - 2:
+            break
+        _add_line(stdscr, 5, x, text, _action_attr(label, selected=index == selected_mode))
+        x += len(text) + 1
+
+    search_label = f"Search: {query}"
+    _add_line(stdscr, 7, 2, search_label[:usable_width])
+
+    list_top = 9
+    list_bottom = height - 4
+    if height >= 14 and width >= 40:
+        _draw_box(stdscr, list_top, 1, list_bottom, width - 2)
+        title = " Local branches " if mode == "local" else f" Remote branches: {mode} "
+        _add_line(stdscr, list_top, 3, title[:usable_width], curses.A_BOLD)
+        visible_rows = max(1, list_bottom - list_top - 1)
+        start = min(max(0, selected_branch - visible_rows // 2), max(0, len(visible) - visible_rows))
+        if not visible:
+            total_in_mode = len(_filter_checkout_branches(branches, mode, ""))
+            message = "No branches match the search." if total_in_mode else "No branches in this mode."
+            _add_line(stdscr, list_top + 1, 3, message[:usable_width], curses.A_DIM)
+        for row, branch in enumerate(visible[start:start + visible_rows], start=list_top + 1):
+            index = start + row - list_top - 1
+            marker = ">" if index == selected_branch else " "
+            current_marker = "* " if branch.is_current else "  "
+            detail_parts = [part for part in (branch.upstream, branch.updated, branch.subject) if part]
+            detail = " | ".join(detail_parts)
+            label = f"{marker} {current_marker}{branch.display_name}" + (f" - {detail}" if detail else "")
+            attr = curses.A_REVERSE if index == selected_branch else curses.A_NORMAL
+            _add_line(stdscr, row, 3, label[:usable_width], attr)
+
+    try:
+        stdscr.move(7, min(width - 2, 10 + len(query)))
+    except curses.error:
+        pass
+    _add_line(stdscr, height - 2, 2, "Type: search  Up/down: branch  Tab/left/right: local/remote  Enter: checkout  q/Esc: cancel")
     stdscr.refresh()
 
 

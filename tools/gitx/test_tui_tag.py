@@ -5,10 +5,13 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from tui import (
+    CheckoutBranch,
     bump_version_tag,
     parse_tag_approval,
     _clamp_scroll,
     _action_label,
+    _checkout_modes,
+    _filter_checkout_branches,
     _merge_context_width,
     _next_hunk_scroll,
     _previous_hunk_scroll,
@@ -86,6 +89,26 @@ class TuiTagTests(unittest.TestCase):
         self.assertEqual(2, _next_hunk_scroll(hunks, current=30, visible_rows=5, total_lines=40))
         self.assertEqual(10, _previous_hunk_scroll(hunks, current=30, visible_rows=5, total_lines=40))
         self.assertEqual(30, _previous_hunk_scroll(hunks, current=2, visible_rows=5, total_lines=40))
+
+    def test_checkout_modes_include_local_and_each_remote(self):
+        branches = [
+            CheckoutBranch("feature", "feature", "local", "", "origin/feature", "1 hour ago", "local"),
+            CheckoutBranch("upstream/topic", "topic", "remote", "upstream", "", "2 hours ago", "remote"),
+            CheckoutBranch("origin/feature", "feature", "remote", "origin", "", "3 hours ago", "remote"),
+        ]
+
+        self.assertEqual(["local", "origin", "upstream"], _checkout_modes(branches))
+
+    def test_filter_checkout_branches_searches_selected_mode(self):
+        branches = [
+            CheckoutBranch("feature", "feature", "local", "", "origin/feature", "1 hour ago", "local"),
+            CheckoutBranch("origin/fix-login", "fix-login", "remote", "origin", "", "2 hours ago", "bug auth"),
+            CheckoutBranch("upstream/fix-login", "fix-login", "remote", "upstream", "", "3 hours ago", "bug auth"),
+        ]
+
+        filtered = _filter_checkout_branches(branches, "origin", "auth")
+
+        self.assertEqual(["origin/fix-login"], [branch.name for branch in filtered])
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 import sys
 
-from commands import add, checkout_branch, clone, commit, merge, push, tag, validate
+from commands import add, checkout, checkout_branch, clone, commit, merge, push, tag, validate
 from config import setup_ai_config
 from git_runner import run
 
@@ -27,6 +27,7 @@ def print_usage():
   {GREEN}c --ai --validate{RESET} {YELLOW}Validate staged diff against project rules before AI commit{RESET}
   {GREEN}tag --ai{RESET}        {YELLOW}Suggest an annotated version tag from recent commits{RESET}
   {GREEN}merge{RESET}           {YELLOW}Open an interactive branch merge manager{RESET}
+  {GREEN}ch{RESET} [git-args]   {YELLOW}Checkout a branch, or open an interactive branch picker{RESET}
   {GREEN}validate{RESET}        {YELLOW}Validate staged diff against project rules{RESET}
   {GREEN}validate --edit-rules{RESET} {YELLOW}Create or edit project validation rules{RESET}
   {GREEN}p{RESET} [remote]     {YELLOW}Push to remote{RESET} (default: origin)
@@ -62,6 +63,7 @@ def main():
         "c": lambda: commit(git_args),
         "tag": lambda: tag(git_args),
         "merge": lambda: merge(git_args),
+        "ch": lambda: checkout(git_args),
         "validate": lambda: validate(git_args),
         "p": lambda: push(git_args),
         "l": lambda: run(["git", "log", "--oneline"]),

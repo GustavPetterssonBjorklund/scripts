@@ -11,15 +11,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from commands import (
     _latest_version_tag,
     _parse_version_tag,
+    checkout,
     commit,
     format_conflict_context,
     merge,
+    parse_checkout_branches,
     parse_merge_branches,
     parse_merge_conflicts,
     resolve_conflict_markers,
     tag,
 )
-from tui import MergeAction
+from tui import CheckoutAction, MergeAction
 
 
 class CommitCommandTests(unittest.TestCase):
@@ -360,6 +362,61 @@ class MergeCommandTests(unittest.TestCase):
 
         self.assertEqual(["feature", "origin/feature"], [branch.name for branch in branches])
         self.assertEqual("add thing", branches[0].subject)
+
+
+class CheckoutCommandTests(unittest.TestCase):
+    def test_regular_checkout_args_pass_through_to_git_checkout(self):
+        with patch("commands.run", return_value=0) as run:
+            result = checkout(["feature"])
+
+        self.assertEqual(0, result)
+        run.assert_called_once_with(["git", "checkout", "feature"])
+
+    def test_interactive_checkout_runs_selected_local_branch(self):
+        branch = parse_checkout_branches(
+            "refs/heads/feature\tfeature\torigin/feature\t1 hour ago\tadd thing",
+            "main",
+        )[0]
+        context = {"current_branch": "main", "branches": [branch]}
+
+        with patch("commands._checkout_context", return_value=context):
+            with patch("commands.choose_checkout_branch", return_value=CheckoutAction(branch)):
+                with patch("commands.run", return_value=0) as run:
+                    result = checkout([])
+
+        self.assertEqual(0, result)
+        run.assert_called_once_with(["git", "checkout", "feature"])
+
+    def test_interactive_checkout_tracks_selected_remote_branch(self):
+        branch = parse_checkout_branches(
+            "refs/remotes/origin/feature\torigin/feature\t\t1 hour ago\tadd thing",
+            "main",
+        )[0]
+        context = {"current_branch": "main", "branches": [branch]}
+
+        with patch("commands._checkout_context", return_value=context):
+            with patch("commands.choose_checkout_branch", return_value=CheckoutAction(branch)):
+                with patch("commands.run", return_value=0) as run:
+                    result = checkout([])
+
+        self.assertEqual(0, result)
+        run.assert_called_once_with(["git", "checkout", "--track", "origin/feature"])
+
+    def test_parse_checkout_branches_groups_remote_branches_by_remote(self):
+        text = "\n".join([
+            "refs/heads/main\tmain\torigin/main\t2 days ago\tmain work",
+            "refs/heads/feature\tfeature\torigin/feature\t1 hour ago\tlocal work",
+            "refs/remotes/origin/HEAD\torigin\t\t2 days ago\torigin main",
+            "refs/remotes/origin/feature\torigin/feature\t\t1 hour ago\tremote work",
+            "refs/remotes/upstream/topic\tupstream/topic\t\t3 hours ago\tupstream work",
+        ])
+
+        branches = parse_checkout_branches(text, "main")
+
+        self.assertEqual(["local", "local", "remote", "remote"], [branch.kind for branch in branches])
+        self.assertEqual(["main", "feature", "feature", "topic"], [branch.display_name for branch in branches])
+        self.assertEqual(["", "", "origin", "upstream"], [branch.remote for branch in branches])
+        self.assertEqual([True, False, False, False], [branch.is_current for branch in branches])
 
 
 if __name__ == "__main__":

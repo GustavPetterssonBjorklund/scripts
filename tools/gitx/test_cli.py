@@ -41,6 +41,14 @@ class CliTests(unittest.TestCase):
         self.assertEqual(0, result)
         merge.assert_called_once_with([])
 
+    def test_checkout_command_uses_gitx_checkout_picker(self):
+        with patch.object(sys, "argv", ["gitx", "ch"]):
+            with patch("cli.checkout", return_value=0) as checkout:
+                result = main()
+
+        self.assertEqual(0, result)
+        checkout.assert_called_once_with([])
+
 
 if __name__ == "__main__":
     unittest.main()

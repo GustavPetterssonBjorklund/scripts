@@ -1,15 +1,25 @@
-{ lib, git, python3, writeShellApplication }:
+{ lib, git, python3, symlinkJoin, writeShellApplication }:
 
-writeShellApplication {
+let
+  gitx = writeShellApplication {
+    name = "gitx";
+
+    runtimeInputs = [
+      git
+      python3
+    ];
+
+    text = ''
+      exec python3 ${../tools/gitx}/gitx.py "$@"
+    '';
+  };
+in
+symlinkJoin {
   name = "gitx";
+  paths = [ gitx ];
 
-  runtimeInputs = [
-    git
-    python3
-  ];
-
-  text = ''
-    exec python3 ${../tools/gitx}/gitx.py "$@"
+  postBuild = ''
+    ln -s gitx "$out/bin/g"
   '';
 
   meta = {
