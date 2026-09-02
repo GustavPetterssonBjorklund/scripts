@@ -312,6 +312,17 @@ RULES = [
         description="Discord MFA tokens are account credentials.",
     ),
     Rule(
+        name="entra_credential_assignment",
+        label="Microsoft Entra credential",
+        base_score=90,
+        pattern=re.compile(
+            r'''(?im)(?:["']?)((?:azure|entra)[_. -]?(?:client[_. -]?(?:id|secret)|tenant[_. -]?id))(?:["']?)\s*(?::|=|=>|->)\s*(?:'([^']+)'|"([^"]+)"|([^\s,;'"&]+))'''
+        ),
+        span_getter=span_from_first_group(2, 3, 4),
+        validator=is_likely_secret_assignment,
+        description="Microsoft Entra service-principal IDs, tenant IDs, and client secrets identify or authenticate cloud access.",
+    ),
+    Rule(
         name="secret_assignment",
         label="Secret-looking assignment",
         base_score=86,
