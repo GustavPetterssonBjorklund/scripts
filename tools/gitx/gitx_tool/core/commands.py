@@ -2,12 +2,12 @@ import sys
 from collections.abc import Callable
 import re
 
-from config import ensure_project_rules_file, get_project_rules, projects_config_path
-from git_runner import output, run
-from openai_commit import clean_commit_message, generate_commit_message, generate_merge_resolution
-from openai_tag import generate_tag_suggestion
-from openai_validate import ValidationResponse, validate_diff
-from tui import (
+from gitx_tool.ai.commit import clean_commit_message, generate_commit_message, generate_merge_resolution
+from gitx_tool.ai.tag import generate_tag_suggestion
+from gitx_tool.ai.validate import ValidationResponse, validate_diff
+from gitx_tool.core.config import ensure_project_rules_file, get_project_rules, projects_config_path
+from gitx_tool.core.git_runner import output, run
+from gitx_tool.ui.tui import (
     approve_generated_commit_message,
     approve_generated_tag,
     approve_validation_findings,

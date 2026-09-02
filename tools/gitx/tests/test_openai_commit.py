@@ -4,9 +4,9 @@ import sys
 import unittest
 from unittest.mock import patch
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from openai_commit import (
+from gitx_tool.ai.commit import (
     _sample_changed_lines,
     build_change_summary,
     build_commit_prompt,
@@ -25,7 +25,7 @@ class PrepareCommitDiffTests(unittest.TestCase):
         self.assertEqual("print('resolved')\n", clean_merge_resolution(text))
 
     def test_generate_merge_resolution_requests_plain_file_content(self):
-        with patch("openai_commit.request_openai_text", return_value="resolved\n") as request:
+        with patch("gitx_tool.ai.commit.request_openai_text", return_value="resolved\n") as request:
             resolved = generate_merge_resolution("file.py", "<<<<<<< HEAD\nours\n=======\ntheirs\n>>>>>>> branch\n")
 
         self.assertEqual("resolved\n", resolved)
@@ -181,7 +181,7 @@ class PrepareCommitDiffTests(unittest.TestCase):
         )
         messages: list[str] = []
 
-        with patch("openai_commit.request_openai_text", return_value="fix(gitx): test"):
+        with patch("gitx_tool.ai.commit.request_openai_text", return_value="fix(gitx): test"):
             response = generate_commit_message(diff, messages.append)
 
         self.assertEqual("fix(gitx): test", response.output_text if response else None)
@@ -209,9 +209,9 @@ class PrepareCommitDiffTests(unittest.TestCase):
             captured_payload.update(json.loads(request.data.decode("utf-8")))
             return FakeResponse()
 
-        with patch("openai_commit.get_openai_api_key", return_value="test-key"):
-            with patch("openai_commit.get_config_value", return_value=None):
-                with patch("openai_commit.urllib.request.urlopen", side_effect=fake_urlopen):
+        with patch("gitx_tool.ai.commit.get_openai_api_key", return_value="test-key"):
+            with patch("gitx_tool.ai.commit.get_config_value", return_value=None):
+                with patch("gitx_tool.ai.commit.urllib.request.urlopen", side_effect=fake_urlopen):
                     response = generate_commit_message(
                         "diff --git a/tools/gitx/openai_commit.py b/tools/gitx/openai_commit.py\n"
                         "index 1111111..2222222 100644\n"

@@ -2,9 +2,9 @@ from pathlib import Path
 import sys
 import unittest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from tui import (
+from gitx_tool.ui.tui import (
     CheckoutBranch,
     bump_version_tag,
     parse_tag_approval,

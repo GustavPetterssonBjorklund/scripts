@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from enum import IntEnum
 from typing import Callable, Optional
 
-from config import ProjectRules, get_config_value
-from openai_commit import request_openai_text, split_diff_by_file
+from gitx_tool.ai.commit import request_openai_text, split_diff_by_file
+from gitx_tool.core.config import ProjectRules, get_config_value
 
 
 class Severity(IntEnum):

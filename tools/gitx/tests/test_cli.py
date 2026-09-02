@@ -3,15 +3,15 @@ import sys
 import unittest
 from unittest.mock import patch
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from cli import main
+from gitx_tool.cli import main
 
 
 class CliTests(unittest.TestCase):
     def test_unknown_command_passes_through_to_git(self):
         with patch.object(sys, "argv", ["gitx", "branch", "-l"]):
-            with patch("cli.run", return_value=0) as run:
+            with patch("gitx_tool.cli.run", return_value=0) as run:
                 result = main()
 
         self.assertEqual(0, result)
@@ -19,7 +19,7 @@ class CliTests(unittest.TestCase):
 
     def test_git_top_level_options_pass_through_to_git(self):
         with patch.object(sys, "argv", ["gitx", "-C", "/tmp/repo", "status"]):
-            with patch("cli.run", return_value=0) as run:
+            with patch("gitx_tool.cli.run", return_value=0) as run:
                 result = main()
 
         self.assertEqual(0, result)
@@ -27,7 +27,7 @@ class CliTests(unittest.TestCase):
 
     def test_known_alias_still_uses_gitx_behavior(self):
         with patch.object(sys, "argv", ["gitx", "s"]):
-            with patch("cli.run", return_value=0) as run:
+            with patch("gitx_tool.cli.run", return_value=0) as run:
                 result = main()
 
         self.assertEqual(0, result)
@@ -35,7 +35,7 @@ class CliTests(unittest.TestCase):
 
     def test_merge_command_uses_gitx_merge_manager(self):
         with patch.object(sys, "argv", ["gitx", "merge"]):
-            with patch("cli.merge", return_value=0) as merge:
+            with patch("gitx_tool.cli.merge", return_value=0) as merge:
                 result = main()
 
         self.assertEqual(0, result)
@@ -43,7 +43,7 @@ class CliTests(unittest.TestCase):
 
     def test_checkout_command_uses_gitx_checkout_picker(self):
         with patch.object(sys, "argv", ["gitx", "ch"]):
-            with patch("cli.checkout", return_value=0) as checkout:
+            with patch("gitx_tool.cli.checkout", return_value=0) as checkout:
                 result = main()
 
         self.assertEqual(0, result)

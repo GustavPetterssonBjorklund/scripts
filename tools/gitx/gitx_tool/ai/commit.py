@@ -3,7 +3,7 @@ import re
 import urllib.error
 import urllib.request
 
-from config import get_config_value, get_openai_api_key
+from gitx_tool.core.config import get_config_value, get_openai_api_key
 from dataclasses import dataclass
 from typing import Any, Callable, Optional
 

@@ -1,8 +1,8 @@
 import sys
 
-from commands import add, checkout, checkout_branch, clone, commit, merge, push, tag, validate
-from config import setup_ai_config
-from git_runner import run
+from gitx_tool.core.commands import add, checkout, checkout_branch, clone, commit, merge, push, tag, validate
+from gitx_tool.core.config import setup_ai_config
+from gitx_tool.core.git_runner import run
 
 
 def print_usage():

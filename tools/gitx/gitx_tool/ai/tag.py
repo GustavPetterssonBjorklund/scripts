@@ -3,7 +3,7 @@ import re
 from dataclasses import dataclass
 from typing import Callable
 
-from openai_commit import request_openai_text
+from gitx_tool.ai.commit import request_openai_text
 
 
 ProgressCallback = Callable[[str], None]

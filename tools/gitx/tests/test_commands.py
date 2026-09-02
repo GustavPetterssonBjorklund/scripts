@@ -6,9 +6,9 @@ from io import StringIO
 from types import SimpleNamespace
 from unittest.mock import patch
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from commands import (
+from gitx_tool.core.commands import (
     _checkout_preview,
     _latest_version_tag,
     _parse_version_tag,
@@ -22,33 +22,33 @@ from commands import (
     resolve_conflict_markers,
     tag,
 )
-from tui import CheckoutAction, MergeAction
+from gitx_tool.ui.tui import CheckoutAction, MergeAction
 
 
 class CommitCommandTests(unittest.TestCase):
     def test_message_args_are_joined_as_commit_message(self):
-        with patch("commands.run", return_value=0) as run:
+        with patch("gitx_tool.core.commands.run", return_value=0) as run:
             result = commit(["update", "docs"])
 
         self.assertEqual(0, result)
         run.assert_called_once_with(["git", "commit", "-m", "update docs"])
 
     def test_git_commit_flags_are_passed_through(self):
-        with patch("commands.run", return_value=0) as run:
+        with patch("gitx_tool.core.commands.run", return_value=0) as run:
             result = commit(["--amend"])
 
         self.assertEqual(0, result)
         run.assert_called_once_with(["git", "commit", "--amend"])
 
     def test_git_commit_flags_with_values_are_passed_through(self):
-        with patch("commands.run", return_value=0) as run:
+        with patch("gitx_tool.core.commands.run", return_value=0) as run:
             result = commit(["--amend", "--no-edit"])
 
         self.assertEqual(0, result)
         run.assert_called_once_with(["git", "commit", "--amend", "--no-edit"])
 
     def test_git_flags_cannot_be_silently_mixed_with_ai_commit(self):
-        with patch("commands.run") as run:
+        with patch("gitx_tool.core.commands.run") as run:
             with redirect_stdout(StringIO()):
                 result = commit(["--ai", "--amend"])
 
@@ -58,7 +58,7 @@ class CommitCommandTests(unittest.TestCase):
 
 class TagCommandTests(unittest.TestCase):
     def test_regular_tag_args_pass_through_to_git_tag(self):
-        with patch("commands.run", return_value=0) as run:
+        with patch("gitx_tool.core.commands.run", return_value=0) as run:
             result = tag(["-l"])
 
         self.assertEqual(0, result)
@@ -72,9 +72,9 @@ class TagCommandTests(unittest.TestCase):
             "recent_commits": "abc1234 feat: add thing",
         }
 
-        with patch("commands._tag_context", return_value=context):
-            with patch("commands.approve_generated_tag", return_value=("v1.3.0", "Release v1.3.0")):
-                with patch("commands.run", return_value=0) as run:
+        with patch("gitx_tool.core.commands._tag_context", return_value=context):
+            with patch("gitx_tool.core.commands.approve_generated_tag", return_value=("v1.3.0", "Release v1.3.0")):
+                with patch("gitx_tool.core.commands.run", return_value=0) as run:
                     result = tag(["--ai"])
 
         self.assertEqual(0, result)
@@ -91,12 +91,12 @@ class TagCommandTests(unittest.TestCase):
             "v0.9.1",
         ])
 
-        with patch("commands.output", return_value=SimpleNamespace(returncode=0, stdout=tags)):
+        with patch("gitx_tool.core.commands.output", return_value=SimpleNamespace(returncode=0, stdout=tags)):
             self.assertEqual("v0.9.1", _latest_version_tag())
 
     def test_latest_version_tag_falls_back_to_git_describe_without_version_tags(self):
         with patch(
-            "commands.output",
+            "gitx_tool.core.commands.output",
             side_effect=[
                 SimpleNamespace(returncode=0, stdout="release\nlegacy\n"),
                 SimpleNamespace(returncode=0, stdout="legacy\n"),
@@ -116,7 +116,7 @@ class TagCommandTests(unittest.TestCase):
 
 class MergeCommandTests(unittest.TestCase):
     def test_regular_merge_args_pass_through_to_git_merge(self):
-        with patch("commands.run", return_value=0) as run:
+        with patch("gitx_tool.core.commands.run", return_value=0) as run:
             result = merge(["--abort"])
 
         self.assertEqual(0, result)
@@ -131,9 +131,9 @@ class MergeCommandTests(unittest.TestCase):
             "conflicts": [],
         }
 
-        with patch("commands._merge_context", return_value=context):
-            with patch("commands.choose_merge_action", return_value=MergeAction("merge", "feature", "no-ff")):
-                with patch("commands.run", return_value=0) as run:
+        with patch("gitx_tool.core.commands._merge_context", return_value=context):
+            with patch("gitx_tool.core.commands.choose_merge_action", return_value=MergeAction("merge", "feature", "no-ff")):
+                with patch("gitx_tool.core.commands.run", return_value=0) as run:
                     result = merge([])
 
         self.assertEqual(0, result)
@@ -148,9 +148,9 @@ class MergeCommandTests(unittest.TestCase):
             "conflicts": [],
         }
 
-        with patch("commands._merge_context", return_value=context):
-            with patch("commands.choose_merge_action", return_value=MergeAction("merge", "feature", "squash")):
-                with patch("commands.run", return_value=0) as run:
+        with patch("gitx_tool.core.commands._merge_context", return_value=context):
+            with patch("gitx_tool.core.commands.choose_merge_action", return_value=MergeAction("merge", "feature", "squash")):
+                with patch("gitx_tool.core.commands.run", return_value=0) as run:
                     result = merge([])
 
         self.assertEqual(0, result)
@@ -165,9 +165,9 @@ class MergeCommandTests(unittest.TestCase):
             "conflicts": [],
         }
 
-        with patch("commands._merge_context", return_value=context):
-            with patch("commands.choose_merge_action", return_value=MergeAction("continue")):
-                with patch("commands.run", return_value=0) as run:
+        with patch("gitx_tool.core.commands._merge_context", return_value=context):
+            with patch("gitx_tool.core.commands.choose_merge_action", return_value=MergeAction("continue")):
+                with patch("gitx_tool.core.commands.run", return_value=0) as run:
                     result = merge([])
 
         self.assertEqual(0, result)
@@ -182,15 +182,15 @@ class MergeCommandTests(unittest.TestCase):
             "conflicts": parse_merge_conflicts("UU file.txt"),
         }
 
-        with patch("commands._merge_context", return_value=context):
+        with patch("gitx_tool.core.commands._merge_context", return_value=context):
             with patch(
-                "commands.choose_merge_action",
+                "gitx_tool.core.commands.choose_merge_action",
                 side_effect=[
                     MergeAction("add-conflict", path="file.txt"),
                     MergeAction("continue"),
                 ],
             ):
-                with patch("commands.run", side_effect=[0, 0]) as run:
+                with patch("gitx_tool.core.commands.run", side_effect=[0, 0]) as run:
                     result = merge([])
 
         self.assertEqual(0, result)
@@ -208,16 +208,16 @@ class MergeCommandTests(unittest.TestCase):
             "conflicts": parse_merge_conflicts("UU file.txt"),
         }
 
-        with patch("commands._merge_context", return_value=context):
+        with patch("gitx_tool.core.commands._merge_context", return_value=context):
             with patch(
-                "commands.choose_merge_action",
+                "gitx_tool.core.commands.choose_merge_action",
                 side_effect=[
                     MergeAction("edit-conflict", path="file.txt"),
                     MergeAction("continue"),
                 ],
             ):
-                with patch("commands.edit_file", return_value=True) as edit_file:
-                    with patch("commands.run", return_value=0) as run:
+                with patch("gitx_tool.core.commands.edit_file", return_value=True) as edit_file:
+                    with patch("gitx_tool.core.commands.run", return_value=0) as run:
                         result = merge([])
 
         self.assertEqual(0, result)
@@ -233,15 +233,15 @@ class MergeCommandTests(unittest.TestCase):
             "conflicts": parse_merge_conflicts("UU file.txt"),
         }
 
-        with patch("commands._merge_context", return_value=context):
+        with patch("gitx_tool.core.commands._merge_context", return_value=context):
             with patch(
-                "commands.choose_merge_action",
+                "gitx_tool.core.commands.choose_merge_action",
                 side_effect=[
                     MergeAction("use-current", path="file.txt"),
                     MergeAction("continue"),
                 ],
             ):
-                with patch("commands.run", side_effect=[0, 0, 0]) as run:
+                with patch("gitx_tool.core.commands.run", side_effect=[0, 0, 0]) as run:
                     result = merge([])
 
         self.assertEqual(0, result)
@@ -260,15 +260,15 @@ class MergeCommandTests(unittest.TestCase):
             "conflicts": parse_merge_conflicts("UU file.txt"),
         }
 
-        with patch("commands._merge_context", return_value=context):
+        with patch("gitx_tool.core.commands._merge_context", return_value=context):
             with patch(
-                "commands.choose_merge_action",
+                "gitx_tool.core.commands.choose_merge_action",
                 side_effect=[
                     MergeAction("use-incoming", path="file.txt"),
                     MergeAction("continue"),
                 ],
             ):
-                with patch("commands.run", side_effect=[0, 0, 0]) as run:
+                with patch("gitx_tool.core.commands.run", side_effect=[0, 0, 0]) as run:
                     result = merge([])
 
         self.assertEqual(0, result)
@@ -287,16 +287,16 @@ class MergeCommandTests(unittest.TestCase):
             "conflicts": parse_merge_conflicts("UU file.txt"),
         }
 
-        with patch("commands._merge_context", return_value=context):
+        with patch("gitx_tool.core.commands._merge_context", return_value=context):
             with patch(
-                "commands.choose_merge_action",
+                "gitx_tool.core.commands.choose_merge_action",
                 side_effect=[
                     MergeAction("apply-ai", path="file.txt", content="resolved\n"),
                     MergeAction("continue"),
                 ],
             ):
-                with patch("commands._write_ai_merge_resolution", return_value=True) as write_ai:
-                    with patch("commands.run", side_effect=[0, 0]) as run:
+                with patch("gitx_tool.core.commands._write_ai_merge_resolution", return_value=True) as write_ai:
+                    with patch("gitx_tool.core.commands.run", side_effect=[0, 0]) as run:
                         result = merge([])
 
         self.assertEqual(0, result)
@@ -367,7 +367,7 @@ class MergeCommandTests(unittest.TestCase):
 
 class CheckoutCommandTests(unittest.TestCase):
     def test_regular_checkout_args_pass_through_to_git_checkout(self):
-        with patch("commands.run", return_value=0) as run:
+        with patch("gitx_tool.core.commands.run", return_value=0) as run:
             result = checkout(["feature"])
 
         self.assertEqual(0, result)
@@ -380,9 +380,9 @@ class CheckoutCommandTests(unittest.TestCase):
         )[0]
         context = {"current_branch": "main", "branches": [branch]}
 
-        with patch("commands._checkout_context", return_value=context):
-            with patch("commands.choose_checkout_branch", return_value=CheckoutAction(branch)) as choose_checkout_branch:
-                with patch("commands.run", return_value=0) as run:
+        with patch("gitx_tool.core.commands._checkout_context", return_value=context):
+            with patch("gitx_tool.core.commands.choose_checkout_branch", return_value=CheckoutAction(branch)) as choose_checkout_branch:
+                with patch("gitx_tool.core.commands.run", return_value=0) as run:
                     result = checkout([])
 
         self.assertEqual(0, result)
@@ -396,9 +396,9 @@ class CheckoutCommandTests(unittest.TestCase):
         )[0]
         context = {"current_branch": "main", "branches": [branch]}
 
-        with patch("commands._checkout_context", return_value=context):
-            with patch("commands.choose_checkout_branch", return_value=CheckoutAction(branch)):
-                with patch("commands.run", return_value=0) as run:
+        with patch("gitx_tool.core.commands._checkout_context", return_value=context):
+            with patch("gitx_tool.core.commands.choose_checkout_branch", return_value=CheckoutAction(branch)):
+                with patch("gitx_tool.core.commands.run", return_value=0) as run:
                     result = checkout([])
 
         self.assertEqual(0, result)
@@ -428,7 +428,7 @@ class CheckoutCommandTests(unittest.TestCase):
             SimpleNamespace(returncode=0, stdout="abc1234 add thing\n", stderr=""),
         ]
 
-        with patch("commands.output", side_effect=outputs) as output:
+        with patch("gitx_tool.core.commands.output", side_effect=outputs) as output:
             preview = _checkout_preview("main", "feature")
 
         self.assertIn("Comparison: main...feature", preview)
@@ -453,7 +453,7 @@ class CheckoutCommandTests(unittest.TestCase):
             SimpleNamespace(returncode=0, stdout="", stderr=""),
         ]
 
-        with patch("commands.output", side_effect=outputs):
+        with patch("gitx_tool.core.commands.output", side_effect=outputs):
             preview = _checkout_preview("main", "main")
 
         self.assertIn("main is 0 ahead, 0 behind main", preview)
@@ -468,7 +468,7 @@ class CheckoutCommandTests(unittest.TestCase):
             SimpleNamespace(returncode=1, stdout="", stderr="log failed\n"),
         ]
 
-        with patch("commands.output", side_effect=outputs):
+        with patch("gitx_tool.core.commands.output", side_effect=outputs):
             preview = _checkout_preview("main", "missing")
 
         self.assertIn("bad revision", preview)

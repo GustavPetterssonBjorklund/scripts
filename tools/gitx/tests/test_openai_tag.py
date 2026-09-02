@@ -3,9 +3,9 @@ import sys
 import unittest
 from unittest.mock import patch
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from openai_tag import build_tag_prompt, generate_tag_suggestion, parse_tag_suggestion
+from gitx_tool.ai.tag import build_tag_prompt, generate_tag_suggestion, parse_tag_suggestion
 
 
 class OpenAITagTests(unittest.TestCase):
@@ -36,7 +36,7 @@ class OpenAITagTests(unittest.TestCase):
         messages: list[str] = []
 
         with patch(
-            "openai_tag.request_openai_text",
+            "gitx_tool.ai.tag.request_openai_text",
             return_value='{"tag":"v1.3.0","bump":"minor","message":"Release v1.3.0"}',
         ):
             suggestion = generate_tag_suggestion(
