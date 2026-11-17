@@ -709,7 +709,33 @@ def _merge_preview(branch: str) -> str:
 
 
 def push(git_args: list[str]):
-    return run(["git", "push", *git_args] if git_args else ["git", "push"])
+    command = ["git", "push", *git_args] if git_args else ["git", "push"]
+    result = output(command)
+
+    if result.stdout:
+        print(result.stdout, end="")
+    if result.stderr:
+        print(result.stderr, end="", file=sys.stderr)
+
+    if result.returncode == 0 or not sys.stdin.isatty() or not sys.stdout.isatty():
+        return result.returncode
+
+    suggestion = re.search(
+        r"git push --set-upstream (?P<remote>\S+) (?P<branch>\S+)",
+        result.stderr,
+    )
+    if not suggestion:
+        return result.returncode
+
+    remote = suggestion.group("remote")
+    branch = suggestion.group("branch")
+    upstream = input(f"Upstream [{remote}/{branch}]: ").strip() or f"{remote}/{branch}"
+    upstream_remote, separator, upstream_branch = upstream.partition("/")
+    if not separator or not upstream_remote or not upstream_branch:
+        print("Upstream must be in the form remote/branch.", file=sys.stderr)
+        return result.returncode
+
+    return run(["git", "push", "--set-upstream", upstream_remote, upstream_branch])
 
 
 def _tag_context() -> dict[str, str] | None:
