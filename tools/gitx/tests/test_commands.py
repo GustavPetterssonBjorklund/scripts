@@ -19,6 +19,7 @@ from gitx_tool.core.commands import (
     parse_checkout_branches,
     parse_merge_branches,
     parse_merge_conflicts,
+    push,
     resolve_conflict_markers,
     tag,
 )
@@ -54,6 +55,41 @@ class CommitCommandTests(unittest.TestCase):
 
         self.assertEqual(1, result)
         run.assert_not_called()
+
+
+class PushCommandTests(unittest.TestCase):
+    def test_missing_upstream_uses_git_suggestion_by_default(self):
+        result = SimpleNamespace(
+            returncode=1,
+            stdout="",
+            stderr=(
+                "fatal: The current branch feature has no upstream branch.\n"
+                "    git push --set-upstream origin feature\n"
+            ),
+        )
+
+        with patch("gitx_tool.core.commands.output", return_value=result):
+            with patch("gitx_tool.core.commands.run", return_value=0) as run:
+                with patch("builtins.input", return_value=""):
+                    with patch("sys.stdin.isatty", return_value=True), patch("sys.stdout.isatty", return_value=True):
+                        self.assertEqual(0, push([]))
+
+        run.assert_called_once_with(["git", "push", "--set-upstream", "origin", "feature"])
+
+    def test_missing_upstream_accepts_custom_remote_and_branch(self):
+        result = SimpleNamespace(
+            returncode=1,
+            stdout="",
+            stderr="    git push --set-upstream origin feature\n",
+        )
+
+        with patch("gitx_tool.core.commands.output", return_value=result):
+            with patch("gitx_tool.core.commands.run", return_value=0) as run:
+                with patch("builtins.input", return_value="upstream/release"):
+                    with patch("sys.stdin.isatty", return_value=True), patch("sys.stdout.isatty", return_value=True):
+                        self.assertEqual(0, push([]))
+
+        run.assert_called_once_with(["git", "push", "--set-upstream", "upstream", "release"])
 
 
 class TagCommandTests(unittest.TestCase):

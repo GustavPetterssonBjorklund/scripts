@@ -49,6 +49,7 @@ The installed `gitx` package also provides `g` as a shorter binary alias.
 
 `gitx c <message>` commits with `-m "<message>"`. When commit arguments include git flags, gitx passes them through to `git commit`, so commands such as `gitx c --amend` and `gitx c --amend --no-edit` keep normal git behavior.
 Commands without a gitx alias pass through to git directly, so `gitx tag`, `gitx branch`, `gitx rebase`, and other git commands work as expected.
+If `gitx p` or `g p` finds that the current branch has no upstream, it prompts for `remote/branch`, using Git's suggested upstream when you press Enter.
 
 ### gitx checkout picker
 
