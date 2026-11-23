@@ -135,7 +135,17 @@ def tag(git_args: list[str]):
         return 1
 
     tag_name, message = suggestion
-    return run(["git", "tag", "-a", tag_name, "-m", message])
+    tag_result = run(["git", "tag", "-a", tag_name, "-m", message])
+    if tag_result != 0 or not sys.stdin.isatty() or not sys.stdout.isatty():
+        return tag_result
+
+    target = input(f"Push tag [origin/{tag_name}]: ").strip() or f"origin/{tag_name}"
+    remote, separator, tag = target.partition("/")
+    if not separator or not remote or not tag:
+        print("Tag push target must be in the form remote/tag.", file=sys.stderr)
+        return tag_result
+
+    return run(["git", "push", remote, tag])
 
 
 def merge(git_args: list[str]):

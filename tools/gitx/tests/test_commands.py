@@ -116,6 +116,99 @@ class TagCommandTests(unittest.TestCase):
         self.assertEqual(0, result)
         run.assert_called_once_with(["git", "tag", "-a", "v1.3.0", "-m", "Release v1.3.0"])
 
+    def test_ai_tag_prompts_to_push_to_origin_after_creation(self):
+        context = {
+            "latest_tag": "v1.2.3",
+            "previous_tags": "v1.2.3\t2026-04-01\tprevious",
+            "previous_info": "Latest tag: v1.2.3",
+            "recent_commits": "abc1234 feat: add thing",
+        }
+
+        with patch("gitx_tool.core.commands._tag_context", return_value=context):
+            with patch("gitx_tool.core.commands.approve_generated_tag", return_value=("v1.3.0", "Release v1.3.0")):
+                with patch("gitx_tool.core.commands.run", return_value=0) as run:
+                    with patch("builtins.input", return_value=""):
+                        with patch("sys.stdin.isatty", return_value=True), patch("sys.stdout.isatty", return_value=True):
+                            result = tag(["--ai"])
+
+        self.assertEqual(0, result)
+        self.assertEqual([
+            (["git", "tag", "-a", "v1.3.0", "-m", "Release v1.3.0"],),
+            (["git", "push", "origin", "v1.3.0"],),
+        ], [call.args for call in run.call_args_list])
+
+    def test_ai_tag_push_prompt_accepts_custom_remote(self):
+        context = {
+            "latest_tag": "v1.2.3",
+            "previous_tags": "v1.2.3\t2026-04-01\tprevious",
+            "previous_info": "Latest tag: v1.2.3",
+            "recent_commits": "abc1234 feat: add thing",
+        }
+
+        with patch("gitx_tool.core.commands._tag_context", return_value=context):
+            with patch("gitx_tool.core.commands.approve_generated_tag", return_value=("v1.3.0", "Release v1.3.0")):
+                with patch("gitx_tool.core.commands.run", return_value=0) as run:
+                    with patch("builtins.input", return_value="upstream/release/v1.3.0"):
+                        with patch("sys.stdin.isatty", return_value=True), patch("sys.stdout.isatty", return_value=True):
+                            result = tag(["--ai"])
+
+        self.assertEqual(0, result)
+        self.assertEqual(["git", "push", "upstream", "release/v1.3.0"], run.call_args_list[-1].args[0])
+
+    def test_ai_tag_invalid_push_target_leaves_tag_created(self):
+        context = {
+            "latest_tag": "v1.2.3",
+            "previous_tags": "v1.2.3\t2026-04-01\tprevious",
+            "previous_info": "Latest tag: v1.2.3",
+            "recent_commits": "abc1234 feat: add thing",
+        }
+
+        with patch("gitx_tool.core.commands._tag_context", return_value=context):
+            with patch("gitx_tool.core.commands.approve_generated_tag", return_value=("v1.3.0", "Release v1.3.0")):
+                with patch("gitx_tool.core.commands.run", return_value=0) as run:
+                    with patch("builtins.input", return_value="not-a-target"):
+                        with patch("sys.stdin.isatty", return_value=True), patch("sys.stdout.isatty", return_value=True):
+                            result = tag(["--ai"])
+
+        self.assertEqual(0, result)
+        run.assert_called_once_with(["git", "tag", "-a", "v1.3.0", "-m", "Release v1.3.0"])
+
+    def test_ai_tag_does_not_prompt_in_noninteractive_mode(self):
+        context = {
+            "latest_tag": "v1.2.3",
+            "previous_tags": "v1.2.3\t2026-04-01\tprevious",
+            "previous_info": "Latest tag: v1.2.3",
+            "recent_commits": "abc1234 feat: add thing",
+        }
+
+        with patch("gitx_tool.core.commands._tag_context", return_value=context):
+            with patch("gitx_tool.core.commands.approve_generated_tag", return_value=("v1.3.0", "Release v1.3.0")):
+                with patch("gitx_tool.core.commands.run", return_value=0) as run:
+                    with patch("sys.stdin.isatty", return_value=False), patch("sys.stdout.isatty", return_value=False):
+                        result = tag(["--ai"])
+
+        self.assertEqual(0, result)
+        run.assert_called_once_with(["git", "tag", "-a", "v1.3.0", "-m", "Release v1.3.0"])
+
+    def test_ai_tag_creation_failure_does_not_prompt_to_push(self):
+        context = {
+            "latest_tag": "v1.2.3",
+            "previous_tags": "v1.2.3\t2026-04-01\tprevious",
+            "previous_info": "Latest tag: v1.2.3",
+            "recent_commits": "abc1234 feat: add thing",
+        }
+
+        with patch("gitx_tool.core.commands._tag_context", return_value=context):
+            with patch("gitx_tool.core.commands.approve_generated_tag", return_value=("v1.3.0", "Release v1.3.0")):
+                with patch("gitx_tool.core.commands.run", return_value=1) as run:
+                    with patch("builtins.input") as input_mock:
+                        with patch("sys.stdin.isatty", return_value=True), patch("sys.stdout.isatty", return_value=True):
+                            result = tag(["--ai"])
+
+        self.assertEqual(1, result)
+        input_mock.assert_not_called()
+        run.assert_called_once_with(["git", "tag", "-a", "v1.3.0", "-m", "Release v1.3.0"])
+
     def test_latest_version_tag_uses_numeric_semver_order(self):
         tags = "\n".join([
             "v.0.1.6",
